@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<title>Shift Calculator</title>
+
+<script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
+
+<style>
+body { font-family:system-ui; padding:20px; }
+.wrap { max-width:480px; margin:auto; }
+
+button, input {
+  width:100%;
+  padding:12px;
+  margin:6px 0;
+  border-radius:10px;
+}
+
+.btn-row { display:flex; gap:10px; }
+
+table {
+  width:100%;
+  border-collapse:collapse;
+  margin-top:20px;
+}
+
+td, th {
+  padding:10px;
+  border-bottom:1px solid #ddd;
+  text-align:center;
+}
+
+/* DROPDOWNS */
+#settingsBox, #excelBox {
+  display:none;
+  padding:12px;
+  border-radius:12px;
+  background: rgba(0,0,0,0.05);
+}
+
+.dark-mode #settingsBox,
+.dark-mode #excelBox {
+  background: rgba(255,255,255,0.05);
+}
+
+/* DARK MODE */
+.dark-mode {
+  background:#121212;
+  color:#fff;
+}
+
+.dark-mode input,
+.dark-mode button {
+  background:#2a2a2a;
+  color:#fff;
+}
+
+/* INSTRUCTIONS POPUP */
+#instructionsModal {
+  display:none;
+  position:fixed;
+  top:0; left:0;
+  width:100%; height:100%;
+  background:rgba(0,0,0,0.6);
+  z-index:999;
+}
+
+#instructionsContent {
+  background:#fff;
+  color:#000;
+  max-width:500px;
+  margin:10% auto;
+  padding:20px;
+  border-radius:12px;
+}
+
+.dark-mode #instructionsContent {
+  background:#1e1e1e;
+  color:#fff;
+}
+</style>
+</head>
+
+<body>
+
+<div class="wrap">
+
+<div id="paydayBox" style="display:none;">
+<h3 id="paydayText"></h3>
+<p id="daysText"></p>
+</div>
+
+<p id="monthlyTop">Monthly total: £0.00</p>
+
+<div class="btn-row">
+<button onclick="toggleDark()">Dark</button>
+<button onclick="resetAll()">Reset</button>
+<button onclick="openInstructions()">ℹ</button>
+</div>
+
+<!-- EXCEL DROPDOWN -->
+<button onclick="toggleExcel()">📄 Excel Upload</button>
+<div id="excelBox">
+  <input type="file" id="fileInput">
+  <button onclick="loadExcel()">Load Excel</button>
+  <p id="status"></p>
+</div>
+
+<!-- SETTINGS DROPDOWN -->
+<button onclick="toggleSettings()">⚙ Pay Settings</button>
+<div id="settingsBox">
+  <label>Base £/hr</label>
+  <input id="rate" type="number" value="12.21">
+
+  <label>Holiday £/hr</label>
+  <input id="holiday" type="number" value="1.47">
+
+  <label>Hours per shift</label>
+  <input id="hours" type="number" value="7">
+</div>
+
+<input id="shifts" type="number" placeholder="Shifts">
+<input id="extra" type="number" placeholder="Extra hours">
+
+<button onclick="calculate()">Add</button>
+
+<table>
+<thead>
+<tr>
+<th>Paydate</th>
+<th>Shifts</th>
+<th>Pay (£)</th>
+<th></th>
+</tr>
+</thead>
+<tbody id="tableBody">
+<tr><td colspan="4">No entries</td></tr>
+</tbody>
+<tfoot>
+<tr>
+<td colspan="2">Total</td>
+<td id="total">£0.00</td>
+<td></td>
+</tr>
+</tfoot>
+</table>
+
+</div>
+
+<!-- INSTRUCTIONS POPUP -->
+<div id="instructionsModal">
+  <div id="instructionsContent">
+
+    <h2>How to use</h2>
+
+    <p><strong>1. Upload Excel</strong><br>
+    Open 📄 Excel Upload → choose timetable → press Load Excel.</p>
+
+    <p><strong>2. Check payday</strong><br>
+    App automatically shows next payday.</p>
+
+    <p><strong>3. Add shifts</strong><br>
+    Enter shifts + optional extra hours → press Add.</p>
+
+    <p><strong>4. Pay calculation</strong><br>
+    Pay = shifts × hours × (base + holiday)</p>
+
+    <p><strong>5. Bank holidays</strong><br>
+    Automatically adjusts payday to last working day.</p>
+
+    <button onclick="closeInstructions()">Close</button>
+
+  </div>
+</div>
+
+<script>
+
+let paydays = [];
+let entries = [];
+let UK_BANK_HOLIDAYS = [];
+let HOLIDAY_NAMES = {};
+
+// LOAD BANK HOLIDAYS
+window.onload = async function(){
+  let res = await fetch("https://www.gov.uk/bank-holidays.json");
+  let data = await res.json();
+
+  let events = data["england-and-wales"].events;
+
+  UK_BANK_HOLIDAYS = events.map(e => e.date);
+
+  events.forEach(e=>{
+    HOLIDAY_NAMES[e.date] = e.title;
+  });
+};
+
+// TOGGLES
+function toggleSettings(){
+  let box = document.getElementById("settingsBox");
+  box.style.display = box.style.display === "none" ? "block" : "none";
+}
+
+function toggleExcel(){
+  let box = document.getElementById("excelBox");
+  box.style.display = box.style.display === "none" ? "block" : "none";
+}
+
+// INSTRUCTIONS
+function openInstructions(){
+  document.getElementById("instructionsModal").style.display = "block";
+}
+
+function closeInstructions(){
+  document.getElementById("instructionsModal").style.display = "none";
+}
+
+// RESET
+function resetAll(){
+  entries=[];
+  document.getElementById("tableBody").innerHTML="<tr><td colspan='4'>No entries</td></tr>";
+  document.getElementById("total").innerText="£0.00";
+  document.getElementById("monthlyTop").innerText="Monthly total: £0.00";
+}
+
+// DARK MODE
+function toggleDark(){
+  document.body.classList.toggle("dark-mode");
+}
+
+// LOAD EXCEL
+function loadExcel(){
+
+  let file = document.getElementById("fileInput").files[0];
+  if(!file) return alert("Upload file");
+
+  let reader = new FileReader();
+
+  reader.onload = function(e){
+
+    let wb = XLSX.read(e.target.result,{type:'array'});
+    let sheet = wb.Sheets[wb.SheetNames[0]];
+    let rows = XLSX.utils.sheet_to_json(sheet,{header:1});
+
+    let temp = [];
+
+    rows.forEach(r=>{
+      r.forEach(c=>{
+        let d = parseDate(c);
+        if(d) temp.push(d);
+      });
+    });
+
+    paydays = [...new Set(temp.map(d=>d.getTime()))]
+      .map(t=>new Date(t))
+      .sort((a,b)=>a-b);
+
+    document.getElementById("status").innerText =
+      "Excel loaded ✅ (" + paydays.length + " dates found)";
+
+    updateHeader();
+    document.getElementById("excelBox").style.display = "none";
+  };
+
+  reader.readAsArrayBuffer(file);
+}
+
+// DATE PARSER
+function parseDate(v){
+  if(v instanceof Date) return v;
+  if(typeof v==="number") return new Date((v-25569)*86400000);
+  if(typeof v==="string" && v.includes("/")){
+    let p=v.split("/");
+    return new Date(p[2],p[1]-1,p[0]);
+  }
+}
+
+// FORMAT
+function format(d){
+  return d.toISOString().split("T")[0];
+}
+
+// NEXT PAYDAY
+function getNextPayday(){
+  let today=new Date();
+  return paydays.find(d=>d>=today);
+}
+
+// ADJUST PAYDAY
+function adjustPayday(date){
+  let d=new Date(date);
+  while(
+    d.getDay()===0 ||
+    d.getDay()===6 ||
+    UK_BANK_HOLIDAYS.includes(format(d))
+  ){
+    d.setDate(d.getDate()-1);
+  }
+  return d;
+}
+
+// HEADER
+function updateHeader(){
+
+  let original = getNextPayday();
+  if(!original) return;
+
+  let adjusted = adjustPayday(original);
+
+  let today = new Date();
+  let days = Math.ceil((adjusted - today)/86400000);
+
+  let o = format(original);
+  let a = format(adjusted);
+
+  let next = new Date(original);
+  next.setDate(next.getDate()+1);
+  let n = format(next);
+
+  let isBH = UK_BANK_HOLIDAYS.includes(o);
+  let nextBH = UK_BANK_HOLIDAYS.includes(n);
+  let changed = o !== a;
+  let hidden = nextBH && !isBH;
+
+  let name = HOLIDAY_NAMES[o] || HOLIDAY_NAMES[n] || "Bank Holiday";
+
+  document.getElementById("paydayBox").style.display="block";
+
+  document.getElementById("daysText").innerText =
+    days + " days" +
+    (isBH || changed || hidden ? " (Bank Holiday - " + name + ")" : "");
+
+  document.getElementById("paydayText").innerText =
+    (isBH || changed || hidden)
+      ? "Payday: " + a + " (adjusted from " + (isBH ? o : n) + ")"
+      : "Payday: " + a;
+}
+
+// CALCULATE
+function calculate(){
+
+  let shifts = Number(shiftsInput.value);
+  if(!shifts) return;
+
+  let extra = Number(extraInput.value)||0;
+  let base = Number(rate.value);
+  let holiday = Number(holidayInput.value);
+  let hours = Number(hoursInput.value);
+
+  let pay = shifts * hours * (base + holiday) + (extra * base);
+
+  let payday = getNextPayday();
+  if(!payday) return;
+
+  let d = format(adjustPayday(payday));
+
+  entries.push({date:d,shifts,pay});
+  render();
+
+  settingsBox.style.display = "none";
+}
+
+// RENDER
+function render(){
+
+  if(!entries.length){
+    tableBody.innerHTML="<tr><td colspan='4'>No entries</td></tr>";
+    return;
+  }
+
+  tableBody.innerHTML = entries.map((e,i)=>`
+    <tr>
+      <td>${e.date}</td>
+      <td>${e.shifts}</td>
+      <td>£${e.pay.toFixed(2)}</td>
+      <td><button onclick="removeEntry(${i})">x</button></td>
+    </tr>
+  `).join("");
+
+  let total = entries.reduce((s,e)=>s+e.pay,0);
+
+  document.getElementById("total").innerText="£"+total.toFixed(2);
+  document.getElementById("monthlyTop").innerText="Monthly total: £"+total.toFixed(2);
+}
+
+// REMOVE
+function removeEntry(i){
+  entries.splice(i,1);
+  render();
+}
+
+</script>
+
+</body>
+</html>
