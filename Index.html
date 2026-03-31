@@ -9,36 +9,74 @@
 <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
 
 <style>
-body { font-family:system-ui; padding:20px; }
-.wrap { max-width:480px; margin:auto; }
 
-button, input {
-  width:100%;
-  padding:12px;
-  margin:6px 0;
-  border-radius:10px;
+/* 🔥 GLOBAL FIX */
+* {
+  box-sizing: border-box;
 }
 
-.btn-row { display:flex; gap:10px; }
+body {
+  font-family: system-ui;
+  padding: 20px;
+}
 
+.wrap {
+  max-width: 480px;
+  margin: auto;
+}
+
+/* 🔥 MATCH BUTTON + INPUT SIZE */
+button, input {
+  width: 100%;
+  padding: 14px;
+  margin: 8px 0;
+  border-radius: 14px;
+  border: 1px solid #ccc;
+  font-size: 16px;
+}
+
+/* BUTTON ROW */
+.btn-row {
+  display: flex;
+  gap: 10px;
+}
+
+.btn-row button {
+  flex: 1;
+}
+
+/* TABLE */
 table {
-  width:100%;
-  border-collapse:collapse;
-  margin-top:20px;
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 20px;
 }
 
 td, th {
-  padding:10px;
-  border-bottom:1px solid #ddd;
-  text-align:center;
+  padding: 12px;
+  border-bottom: 1px solid #ddd;
+  text-align: center;
 }
 
 /* DROPDOWNS */
 #settingsBox, #excelBox {
-  display:none;
-  padding:12px;
-  border-radius:12px;
+  display: none;
+  padding: 12px;
+  border-radius: 12px;
   background: rgba(0,0,0,0.05);
+}
+
+/* DARK MODE */
+.dark-mode {
+  background: #121212;
+  color: #fff;
+}
+
+.dark-mode input,
+.dark-mode button {
+  background: #2a2a2a;
+  color: #fff;
+  border: 1px solid #444;
 }
 
 .dark-mode #settingsBox,
@@ -46,41 +84,28 @@ td, th {
   background: rgba(255,255,255,0.05);
 }
 
-/* DARK MODE */
-.dark-mode {
-  background:#121212;
-  color:#fff;
-}
-
-.dark-mode input,
-.dark-mode button {
-  background:#2a2a2a;
-  color:#fff;
-}
-
-/* INSTRUCTIONS POPUP */
+/* POPUP */
 #instructionsModal {
-  display:none;
-  position:fixed;
+  display: none;
+  position: fixed;
   top:0; left:0;
   width:100%; height:100%;
-  background:rgba(0,0,0,0.6);
-  z-index:999;
+  background: rgba(0,0,0,0.6);
 }
 
 #instructionsContent {
-  background:#fff;
-  color:#000;
-  max-width:500px;
-  margin:10% auto;
-  padding:20px;
-  border-radius:12px;
+  background: #fff;
+  padding: 20px;
+  border-radius: 12px;
+  max-width: 500px;
+  margin: 10% auto;
 }
 
 .dark-mode #instructionsContent {
-  background:#1e1e1e;
-  color:#fff;
+  background: #1e1e1e;
+  color: #fff;
 }
+
 </style>
 </head>
 
@@ -101,27 +126,25 @@ td, th {
 <button onclick="openInstructions()">ℹ</button>
 </div>
 
-<!-- EXCEL DROPDOWN -->
+<!-- EXCEL -->
 <button onclick="toggleExcel()">📄 Excel Upload</button>
+
 <div id="excelBox">
   <input type="file" id="fileInput">
   <button onclick="loadExcel()">Load Excel</button>
   <p id="status"></p>
 </div>
 
-<!-- SETTINGS DROPDOWN -->
+<!-- SETTINGS -->
 <button onclick="toggleSettings()">⚙ Pay Settings</button>
+
 <div id="settingsBox">
-  <label>Base £/hr</label>
-  <input id="rate" type="number" value="12.21">
-
-  <label>Holiday £/hr</label>
-  <input id="holiday" type="number" value="1.47">
-
-  <label>Hours per shift</label>
-  <input id="hours" type="number" value="7">
+  <input id="rate" type="number" value="12.21" placeholder="Base £/hr">
+  <input id="holiday" type="number" value="1.47" placeholder="Holiday £/hr">
+  <input id="hours" type="number" value="7" placeholder="Hours">
 </div>
 
+<!-- INPUTS -->
 <input id="shifts" type="number" placeholder="Shifts">
 <input id="extra" type="number" placeholder="Extra hours">
 
@@ -136,9 +159,11 @@ td, th {
 <th></th>
 </tr>
 </thead>
+
 <tbody id="tableBody">
 <tr><td colspan="4">No entries</td></tr>
 </tbody>
+
 <tfoot>
 <tr>
 <td colspan="2">Total</td>
@@ -150,30 +175,17 @@ td, th {
 
 </div>
 
-<!-- INSTRUCTIONS POPUP -->
+<!-- POPUP -->
 <div id="instructionsModal">
-  <div id="instructionsContent">
+<div id="instructionsContent">
 
-    <h2>How to use</h2>
+<h2>How to use</h2>
 
-    <p><strong>1. Upload Excel</strong><br>
-    Open 📄 Excel Upload → choose timetable → press Load Excel.</p>
+<p>Upload Excel → Add shifts → See pay.</p>
 
-    <p><strong>2. Check payday</strong><br>
-    App automatically shows next payday.</p>
+<button onclick="closeInstructions()">Close</button>
 
-    <p><strong>3. Add shifts</strong><br>
-    Enter shifts + optional extra hours → press Add.</p>
-
-    <p><strong>4. Pay calculation</strong><br>
-    Pay = shifts × hours × (base + holiday)</p>
-
-    <p><strong>5. Bank holidays</strong><br>
-    Automatically adjusts payday to last working day.</p>
-
-    <button onclick="closeInstructions()">Close</button>
-
-  </div>
+</div>
 </div>
 
 <script>
@@ -183,7 +195,7 @@ let entries = [];
 let UK_BANK_HOLIDAYS = [];
 let HOLIDAY_NAMES = {};
 
-// LOAD BANK HOLIDAYS
+// LOAD HOLIDAYS
 window.onload = async function(){
   let res = await fetch("https://www.gov.uk/bank-holidays.json");
   let data = await res.json();
@@ -208,33 +220,31 @@ function toggleExcel(){
   box.style.display = box.style.display === "none" ? "block" : "none";
 }
 
-// INSTRUCTIONS
+function toggleDark(){
+  document.body.classList.toggle("dark-mode");
+}
+
 function openInstructions(){
-  document.getElementById("instructionsModal").style.display = "block";
+  instructionsModal.style.display = "block";
 }
 
 function closeInstructions(){
-  document.getElementById("instructionsModal").style.display = "none";
+  instructionsModal.style.display = "none";
 }
 
 // RESET
 function resetAll(){
-  entries=[];
-  document.getElementById("tableBody").innerHTML="<tr><td colspan='4'>No entries</td></tr>";
-  document.getElementById("total").innerText="£0.00";
-  document.getElementById("monthlyTop").innerText="Monthly total: £0.00";
-}
-
-// DARK MODE
-function toggleDark(){
-  document.body.classList.toggle("dark-mode");
+  entries = [];
+  tableBody.innerHTML = "<tr><td colspan='4'>No entries</td></tr>";
+  total.innerText = "£0.00";
+  monthlyTop.innerText = "Monthly total: £0.00";
 }
 
 // LOAD EXCEL
 function loadExcel(){
 
-  let file = document.getElementById("fileInput").files[0];
-  if(!file) return alert("Upload file");
+  let file = fileInput.files[0];
+  if(!file) return;
 
   let reader = new FileReader();
 
@@ -257,17 +267,17 @@ function loadExcel(){
       .map(t=>new Date(t))
       .sort((a,b)=>a-b);
 
-    document.getElementById("status").innerText =
-      "Excel loaded ✅ (" + paydays.length + " dates found)";
+    status.innerText = "Excel loaded ✅";
 
     updateHeader();
-    document.getElementById("excelBox").style.display = "none";
+
+    excelBox.style.display = "none";
   };
 
   reader.readAsArrayBuffer(file);
 }
 
-// DATE PARSER
+// DATE
 function parseDate(v){
   if(v instanceof Date) return v;
   if(typeof v==="number") return new Date((v-25569)*86400000);
@@ -277,18 +287,15 @@ function parseDate(v){
   }
 }
 
-// FORMAT
 function format(d){
   return d.toISOString().split("T")[0];
 }
 
-// NEXT PAYDAY
 function getNextPayday(){
   let today=new Date();
   return paydays.find(d=>d>=today);
 }
 
-// ADJUST PAYDAY
 function adjustPayday(date){
   let d=new Date(date);
   while(
@@ -304,50 +311,26 @@ function adjustPayday(date){
 // HEADER
 function updateHeader(){
 
-  let original = getNextPayday();
-  if(!original) return;
+  let p = getNextPayday();
+  if(!p) return;
 
-  let adjusted = adjustPayday(original);
+  let a = adjustPayday(p);
 
-  let today = new Date();
-  let days = Math.ceil((adjusted - today)/86400000);
-
-  let o = format(original);
-  let a = format(adjusted);
-
-  let next = new Date(original);
-  next.setDate(next.getDate()+1);
-  let n = format(next);
-
-  let isBH = UK_BANK_HOLIDAYS.includes(o);
-  let nextBH = UK_BANK_HOLIDAYS.includes(n);
-  let changed = o !== a;
-  let hidden = nextBH && !isBH;
-
-  let name = HOLIDAY_NAMES[o] || HOLIDAY_NAMES[n] || "Bank Holiday";
-
-  document.getElementById("paydayBox").style.display="block";
-
-  document.getElementById("daysText").innerText =
-    days + " days" +
-    (isBH || changed || hidden ? " (Bank Holiday - " + name + ")" : "");
-
-  document.getElementById("paydayText").innerText =
-    (isBH || changed || hidden)
-      ? "Payday: " + a + " (adjusted from " + (isBH ? o : n) + ")"
-      : "Payday: " + a;
+  paydayBox.style.display="block";
+  paydayText.innerText="Payday: "+format(a);
 }
 
-// CALCULATE
+// CALCULATE (FIXED)
 function calculate(){
 
-  let shifts = Number(shiftsInput.value);
+  let shifts = Number(document.getElementById("shifts").value);
   if(!shifts) return;
 
-  let extra = Number(extraInput.value)||0;
-  let base = Number(rate.value);
-  let holiday = Number(holidayInput.value);
-  let hours = Number(hoursInput.value);
+  let extra = Number(document.getElementById("extra").value) || 0;
+
+  let base = Number(document.getElementById("rate").value);
+  let holiday = Number(document.getElementById("holiday").value);
+  let hours = Number(document.getElementById("hours").value);
 
   let pay = shifts * hours * (base + holiday) + (extra * base);
 
@@ -357,6 +340,7 @@ function calculate(){
   let d = format(adjustPayday(payday));
 
   entries.push({date:d,shifts,pay});
+
   render();
 
   settingsBox.style.display = "none";
@@ -379,13 +363,12 @@ function render(){
     </tr>
   `).join("");
 
-  let total = entries.reduce((s,e)=>s+e.pay,0);
+  let t = entries.reduce((s,e)=>s+e.pay,0);
 
-  document.getElementById("total").innerText="£"+total.toFixed(2);
-  document.getElementById("monthlyTop").innerText="Monthly total: £"+total.toFixed(2);
+  total.innerText="£"+t.toFixed(2);
+  monthlyTop.innerText="Monthly total: £"+t.toFixed(2);
 }
 
-// REMOVE
 function removeEntry(i){
   entries.splice(i,1);
   render();
