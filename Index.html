@@ -75,9 +75,7 @@ td button{
   width:auto;
 }
 
-tfoot td{
-  font-weight:600;
-}
+tfoot td{font-weight:600;}
 
 .footer{
   text-align:center;
@@ -91,6 +89,11 @@ tfoot td{
   opacity:0;
   pointer-events:none;
   height:0;
+}
+
+body.dark #infoBox{
+  background:#1e1e1e;
+  color:#fff;
 }
 </style>
 </head>
@@ -164,13 +167,44 @@ Built by <a href="https://connormoizer.com" target="_blank">Connor Moizer</a>
 
 </div>
 
+<!-- INFO MODAL -->
+<div id="infoModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.6); z-index:999;">
+  <div id="infoBox" style="
+    position:absolute;
+    top:50%;
+    left:50%;
+    transform:translate(-50%,-50%);
+    width:90%;
+    max-width:400px;
+    background:#fff;
+    padding:20px;
+    border-radius:20px;
+    max-height:80%;
+    overflow:auto;
+  ">
+    <h3>Shift Pay Calculator</h3>
+
+    <p><strong>How it works:</strong><br>
+    Upload Excel once → Enter shifts → Get pay</p>
+
+    <p><strong>Features:</strong><br>
+    • Saves data to your device<br>
+    • No re-upload needed<br>
+    • Auto updates pay periods<br>
+    • Bank holidays adjust paydays<br>
+    • Works offline after setup</p>
+
+    <button onclick="closeInfo()">Close</button>
+  </div>
+</div>
+
 <script>
 
 let periods=[];
 let entries=[];
 let holidays=[];
 
-// FETCH BANK HOLIDAYS
+// FETCH HOLIDAYS
 async function loadBankHolidays(){
   try{
     let res = await fetch("https://www.gov.uk/bank-holidays.json");
@@ -181,25 +215,31 @@ async function loadBankHolidays(){
     applyHolidayAdjustments();
 
   }catch(e){
-    console.log("Holiday fetch failed", e);
+    console.log(e);
   }
 }
 
-// APPLY ADJUSTMENTS AFTER EXCEL LOAD
+// APPLY HOLIDAY LOGIC
 function applyHolidayAdjustments(){
 
 if(!periods.length || !holidays.length) return;
 
 periods = periods.map(p => {
 
-let result = adjustPayday(p.payday);
+let d = new Date(p.payday);
+let adjusted=false;
 
-return {
-  ...p,
-  payday: result.date,
-  adjusted: result.adjusted
-};
+while(true){
+let iso = d.toISOString().split("T")[0];
+let day = d.getDay();
 
+if((holidays.includes(iso)) || day===0 || day===6){
+  d.setDate(d.getDate()-1);
+  adjusted=true;
+}else break;
+}
+
+return {...p, payday:d, adjusted};
 });
 
 localStorage.setItem("savedPeriods", JSON.stringify(periods));
@@ -208,38 +248,17 @@ populateDropdown();
 render();
 }
 
-// ADJUST PAYDAY
-function adjustPayday(date){
-
-let d = new Date(date);
-let adjusted = false;
-
-while(true){
-
-let iso = d.toISOString().split("T")[0];
-let day = d.getDay();
-
-if((holidays.length && holidays.includes(iso)) || day===0 || day===6){
-  d.setDate(d.getDate()-1);
-  adjusted = true;
-}else{
-  break;
-}
-
-}
-
-return {date:d, adjusted};
-}
-
 // LOAD
 window.onload=function(){
 
-let savedEntries=localStorage.getItem("savedEntries");
-if(savedEntries) entries=JSON.parse(savedEntries);
+let savedEntries = localStorage.getItem("savedEntries");
+if(savedEntries) entries = JSON.parse(savedEntries);
 
-let savedPeriods=localStorage.getItem("savedPeriods");
+let savedPeriods = localStorage.getItem("savedPeriods");
+
 if(savedPeriods){
-periods=JSON.parse(savedPeriods).map(p=>({
+
+periods = JSON.parse(savedPeriods).map(p=>({
 from:new Date(p.from),
 cutoff:new Date(p.cutoff),
 payday:new Date(p.payday),
@@ -247,13 +266,14 @@ adjusted:p.adjusted||false
 }));
 
 filterOldPeriods();
+populateDropdown();
 }
 
 if(periods.length){
 document.getElementById("excelBox").style.display="none";
 }
 
-let dark=localStorage.getItem("darkMode");
+let dark = localStorage.getItem("darkMode");
 if(dark==="on") document.body.classList.add("dark");
 
 render();
@@ -276,27 +296,28 @@ localStorage.setItem("darkMode",
 document.body.classList.contains("dark")?"on":"off");
 }
 
+function showInfo(){
+document.getElementById("infoModal").style.display="block";
+}
+
+function closeInfo(){
+document.getElementById("infoModal").style.display="none";
+}
+
 function resetAll(){
 entries=[];
 localStorage.removeItem("savedEntries");
 render();
-document.getElementById("monthlyTop").innerText="Monthly total: £0.00";
 }
 
-function showInfo(){
-alert("Upload Excel → Add shifts → Done");
-}
-
-// DATE PARSE
+// DATE
 function parseDate(v){
 if(!v) return null;
-if(v instanceof Date && !isNaN(v)) return v;
+if(v instanceof Date) return v;
 if(typeof v==="number") return new Date((v-25569)*86400000);
-if(typeof v==="string") return new Date(v);
-return null;
+return new Date(v);
 }
 
-// FORMAT
 function formatDate(d){
 return d.toLocaleDateString('en-GB',{
 day:'numeric',month:'short',year:'numeric'
@@ -315,7 +336,6 @@ return today < nextDay;
 });
 
 localStorage.setItem("savedPeriods", JSON.stringify(periods));
-populateDropdown();
 }
 
 // LOAD EXCEL
@@ -334,12 +354,12 @@ let rows=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{header:1});
 periods=[];
 
 let headerRow = rows.find(r => 
-r.map(x => String(x).trim().toUpperCase()).includes("FROM")
+r.map(x => String(x).toUpperCase()).includes("FROM")
 );
 
-let fromIndex = headerRow.findIndex(c => String(c).trim().toUpperCase() === "FROM");
-let cutoffIndex = headerRow.findIndex(c => String(c).trim().toUpperCase() === "CUT OFF");
-let paydayIndex = headerRow.findIndex(c => String(c).trim().toUpperCase() === "PAYDATE");
+let fromIndex = headerRow.findIndex(c => String(c).toUpperCase() === "FROM");
+let cutoffIndex = headerRow.findIndex(c => String(c).toUpperCase() === "CUT OFF");
+let paydayIndex = headerRow.findIndex(c => String(c).toUpperCase() === "PAYDATE");
 
 rows.forEach(r=>{
 let from=parseDate(r[fromIndex]);
@@ -347,12 +367,7 @@ let cutoff=parseDate(r[cutoffIndex]);
 let payday=parseDate(r[paydayIndex]);
 
 if(from && cutoff && payday){
-periods.push({
-  from,
-  cutoff,
-  payday,
-  adjusted:false
-});
+periods.push({from,cutoff,payday,adjusted:false});
 }
 });
 
@@ -361,12 +376,11 @@ periods.sort((a,b)=>a.payday-b.payday);
 localStorage.setItem("savedPeriods", JSON.stringify(periods));
 
 filterOldPeriods();
+populateDropdown();
 
-// 🔥 NOW APPLY HOLIDAY LOGIC AFTER LOAD
 loadBankHolidays();
 
 document.getElementById("excelBox").style.display="none";
-
 };
 
 reader.readAsArrayBuffer(file);
@@ -394,15 +408,12 @@ updateFromDropdown();
 function updateFromDropdown(){
 
 let i=document.getElementById("periodSelect").value;
-if(i==="") return;
-
 let p=periods[i];
 
 document.getElementById("periodText").innerHTML=
-`Work Period:<br>
-${formatDate(p.from)} → ${formatDate(p.cutoff)}<br>
+`${formatDate(p.from)} → ${formatDate(p.cutoff)}<br>
 Payday: ${formatDate(p.payday)}
-${p.adjusted ? "<br><small>(Adjusted for bank holiday)</small>" : ""}`;
+${p.adjusted ? "<br><small>(Adjusted)</small>" : ""}`;
 }
 
 // CALCULATE
@@ -411,20 +422,17 @@ function calculate(){
 let shifts=Number(document.getElementById("shifts").value);
 if(!shifts) return alert("Enter shifts");
 
-let i=document.getElementById("periodSelect").value;
-let p=periods[i];
+let p=periods[document.getElementById("periodSelect").value];
 
-let base=Number(document.getElementById("rate").value)||0;
-let holiday=Number(document.getElementById("holiday").value)||0;
-let hours=Number(document.getElementById("hours").value)||0;
+let base=+rate.value||0;
+let holiday=+holiday.value||0;
+let hours=+hours.value||0;
 
 let pay=shifts*hours*(base+holiday);
 
 entries.push({
 period:`${formatDate(p.from)} → ${formatDate(p.cutoff)}`,
-payday: p.adjusted 
-  ? formatDate(p.payday) + " *" 
-  : formatDate(p.payday),
+payday: formatDate(p.payday),
 shifts,
 pay
 });
@@ -432,19 +440,17 @@ pay
 localStorage.setItem("savedEntries",JSON.stringify(entries));
 
 render();
-document.getElementById("shifts").value="";
+shifts.value="";
 }
 
 // RENDER
 function render(){
 
 let body=document.getElementById("tableBody");
-let totalEl=document.getElementById("total");
-let monthlyTop=document.getElementById("monthlyTop");
 
 if(!entries.length){
 body.innerHTML="<tr><td colspan='5'>No entries</td></tr>";
-totalEl.innerText="£0.00";
+total.innerText="£0.00";
 monthlyTop.innerText="Monthly total: £0.00";
 return;
 }
@@ -459,10 +465,10 @@ body.innerHTML=entries.map((e,i)=>`
 </tr>
 `).join("");
 
-let total=entries.reduce((s,e)=>s+e.pay,0);
+let totalVal=entries.reduce((s,e)=>s+e.pay,0);
 
-totalEl.innerText="£"+total.toFixed(2);
-monthlyTop.innerText="Monthly total: £"+total.toFixed(2);
+total.innerText="£"+totalVal.toFixed(2);
+monthlyTop.innerText="Monthly total: £"+totalVal.toFixed(2);
 }
 
 // REMOVE
