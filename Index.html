@@ -85,7 +85,7 @@ td, th {
   color:#fff;
 }
 
-/* 🔥 FOOTER */
+/* FOOTER */
 .footer {
   text-align:center;
   margin-top:30px;
@@ -127,6 +127,7 @@ td, th {
 <div id="excelBox">
 <input type="file" id="fileInput">
 <button onclick="loadExcel()">Load Excel</button>
+<button onclick="clearSaved()">Clear Saved Timetable</button>
 <p id="status"></p>
 </div>
 
@@ -156,9 +157,8 @@ td, th {
 </tfoot>
 </table>
 
-<!-- 🔥 FOOTER -->
 <div class="footer">
-  Built by <a href="https://connormoizer.com" target="_blank">Connor Moizer</a>
+Built by <a href="https://connormoizer.com" target="_blank">Connor Moizer</a>
 </div>
 
 </div>
@@ -199,13 +199,23 @@ if ('serviceWorker' in navigator) {
 let paydays=[], entries=[];
 let UK_BANK_HOLIDAYS=[], HOLIDAY_NAMES={};
 
+// 🔥 LOAD + AUTO LOAD SAVED
 window.onload = async function(){
+
   let res = await fetch("https://www.gov.uk/bank-holidays.json");
   let data = await res.json();
   let events = data["england-and-wales"].events;
 
   UK_BANK_HOLIDAYS = events.map(e=>e.date);
   events.forEach(e=>HOLIDAY_NAMES[e.date]=e.title);
+
+  let saved = localStorage.getItem("savedPaydays");
+
+  if(saved){
+    paydays = JSON.parse(saved).map(d => new Date(d));
+    status.innerText = "Timetable auto-loaded ✅";
+    updateHeader();
+  }
 };
 
 function toggleSettings(){ settingsBox.style.display = settingsBox.style.display==="none"?"block":"none"; }
@@ -222,13 +232,24 @@ function resetAll(){
   monthlyTop.innerText="Monthly total: £0.00";
 }
 
+// 🔥 CLEAR SAVED
+function clearSaved(){
+  localStorage.removeItem("savedPaydays");
+  paydays = [];
+  status.innerText = "Saved timetable cleared";
+  document.getElementById("paydayBox").style.display = "none";
+}
+
+// LOAD EXCEL
 function loadExcel(){
+
   let file=fileInput.files[0];
   if(!file) return alert("Upload file");
 
   let reader=new FileReader();
 
   reader.onload=function(e){
+
     let wb=XLSX.read(e.target.result,{type:'array'});
     let rows=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{header:1});
 
@@ -242,7 +263,10 @@ function loadExcel(){
       .map(t=>new Date(t))
       .sort((a,b)=>a-b);
 
-    status.innerText="Excel loaded ✅";
+    // 🔥 SAVE DATA
+    localStorage.setItem("savedPaydays", JSON.stringify(paydays));
+
+    status.innerText="Excel loaded & saved ✅";
     updateHeader();
     excelBox.style.display="none";
   };
