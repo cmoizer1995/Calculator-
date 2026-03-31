@@ -175,43 +175,64 @@ async function loadBankHolidays(){
   try{
     let res = await fetch("https://www.gov.uk/bank-holidays.json");
     let data = await res.json();
+
     holidays = data["england-and-wales"].events.map(e => e.date);
+
+    applyHolidayAdjustments();
+
   }catch(e){
     console.log("Holiday fetch failed", e);
   }
+}
+
+// APPLY ADJUSTMENTS AFTER EXCEL LOAD
+function applyHolidayAdjustments(){
+
+if(!periods.length || !holidays.length) return;
+
+periods = periods.map(p => {
+
+let result = adjustPayday(p.payday);
+
+return {
+  ...p,
+  payday: result.date,
+  adjusted: result.adjusted
+};
+
+});
+
+localStorage.setItem("savedPeriods", JSON.stringify(periods));
+
+populateDropdown();
+render();
 }
 
 // ADJUST PAYDAY
 function adjustPayday(date){
 
 let d = new Date(date);
-let original = new Date(date);
 let adjusted = false;
 
 while(true){
 
-  let iso = d.toISOString().split("T")[0];
-  let day = d.getDay();
+let iso = d.toISOString().split("T")[0];
+let day = d.getDay();
 
-  if(holidays.includes(iso) || day === 0 || day === 6){
-    d.setDate(d.getDate() - 1);
-    adjusted = true;
-  } else {
-    break;
-  }
+if((holidays.length && holidays.includes(iso)) || day===0 || day===6){
+  d.setDate(d.getDate()-1);
+  adjusted = true;
+}else{
+  break;
 }
 
-return {
-  date: d,
-  adjusted: adjusted,
-  original: original
-};
+}
+
+return {date:d, adjusted};
 }
 
 // LOAD
-window.onload=async function(){
-
-await loadBankHolidays();
+window.onload=function(){
 
 let savedEntries=localStorage.getItem("savedEntries");
 if(savedEntries) entries=JSON.parse(savedEntries);
@@ -222,7 +243,7 @@ periods=JSON.parse(savedPeriods).map(p=>({
 from:new Date(p.from),
 cutoff:new Date(p.cutoff),
 payday:new Date(p.payday),
-adjusted:p.adjusted || false
+adjusted:p.adjusted||false
 }));
 
 filterOldPeriods();
@@ -326,14 +347,11 @@ let cutoff=parseDate(r[cutoffIndex]);
 let payday=parseDate(r[paydayIndex]);
 
 if(from && cutoff && payday){
-
-let result = adjustPayday(payday);
-
 periods.push({
   from,
   cutoff,
-  payday: result.date,
-  adjusted: result.adjusted
+  payday,
+  adjusted:false
 });
 }
 });
@@ -344,7 +362,11 @@ localStorage.setItem("savedPeriods", JSON.stringify(periods));
 
 filterOldPeriods();
 
+// 🔥 NOW APPLY HOLIDAY LOGIC AFTER LOAD
+loadBankHolidays();
+
 document.getElementById("excelBox").style.display="none";
+
 };
 
 reader.readAsArrayBuffer(file);
