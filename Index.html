@@ -26,7 +26,6 @@ button, input {
 }
 
 .btn-row { display:flex; gap:10px; }
-
 .btn-row button { flex:1; }
 
 table {
@@ -121,8 +120,8 @@ td, th {
 <input id="hours" type="number" value="7">
 </div>
 
+<!-- ONLY SHIFTS NOW -->
 <input id="shifts" type="number" placeholder="Shifts">
-<input id="extra" type="number" placeholder="Extra hours">
 
 <button onclick="calculate()">Add</button>
 
@@ -156,7 +155,7 @@ App automatically shows next payday.<br>
 If payday is affected by a bank holiday, it will be shown under the payday.</p>
 
 <p><strong>3. Add shifts</strong><br>
-Enter shifts + optional extra hours → press Add.</p>
+Enter number of shifts → press Add.</p>
 
 <p><strong>4. Pay calculation</strong><br>
 Pay = shifts × hours × (base + holiday)</p>
@@ -171,7 +170,6 @@ Automatically adjusts payday to last working day.</p>
 
 <script>
 
-// REGISTER SERVICE WORKER
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('sw.js');
 }
@@ -204,11 +202,11 @@ function resetAll(){
 
 function loadExcel(){
   let file=fileInput.files[0];
-  if(!file) return;
+  if(!file) return alert("Upload file");
 
   let reader=new FileReader();
-  reader.onload=function(e){
 
+  reader.onload=function(e){
     let wb=XLSX.read(e.target.result,{type:'array'});
     let rows=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{header:1});
 
@@ -218,12 +216,15 @@ function loadExcel(){
       if(d) temp.push(d);
     }));
 
-    paydays=[...new Set(temp.map(d=>d.getTime()))].map(t=>new Date(t)).sort((a,b)=>a-b);
+    paydays=[...new Set(temp.map(d=>d.getTime()))]
+      .map(t=>new Date(t))
+      .sort((a,b)=>a-b);
 
     status.innerText="Excel loaded ✅";
     updateHeader();
     excelBox.style.display="none";
   };
+
   reader.readAsArrayBuffer(file);
 }
 
@@ -239,66 +240,76 @@ function parseDate(v){
 function format(d){ return d.toISOString().split("T")[0]; }
 
 function getNextPayday(){
+  if(!paydays.length) return new Date();
   let today=new Date();
-  return paydays.find(d=>d>=today);
+  let next=paydays.find(d=>d>=today);
+  return next || paydays[paydays.length-1];
 }
 
 function adjustPayday(date){
   let d=new Date(date);
-  while(d.getDay()===0||d.getDay()===6||UK_BANK_HOLIDAYS.includes(format(d))){
+  while(d.getDay()===0 || d.getDay()===6 || UK_BANK_HOLIDAYS.includes(format(d))){
     d.setDate(d.getDate()-1);
   }
   return d;
 }
 
 function updateHeader(){
+
   let p=getNextPayday();
   if(!p) return;
 
-  let a=adjustPayday(p);
+  let adjusted=adjustPayday(p);
+
   paydayBox.style.display="block";
 
-  let o=format(p);
-  let adj=format(a);
+  let originalStr=format(p);
+  let adjustedStr=format(adjusted);
 
-  let next=new Date(p);
-  next.setDate(next.getDate()+1);
-  let n=format(next);
+  let isBH=UK_BANK_HOLIDAYS.includes(originalStr);
+  let name=HOLIDAY_NAMES[originalStr] || "Bank Holiday";
 
-  let isBH=UK_BANK_HOLIDAYS.includes(o);
-  let nextBH=UK_BANK_HOLIDAYS.includes(n);
+  document.getElementById("paydayText").innerText="";
 
-  let name=HOLIDAY_NAMES[o]||HOLIDAY_NAMES[n]||"Bank Holiday";
-
-  paydayText.innerText =
-    (isBH || nextBH)
-      ? "Payday: "+adj+" (adjusted from "+(isBH?o:n)+")"
-      : "Payday: "+adj;
-
-  daysText.innerText =
-    (isBH || nextBH)
-      ? "Bank Holiday - "+name
-      : "";
+  document.getElementById("daysText").innerHTML =
+    isBH
+      ? `
+        Original payday: ${originalStr}<br>
+        Adjusted payday: ${adjustedStr}<br>
+        Bank Holiday – ${name}
+      `
+      : `
+        Payday: ${adjustedStr}
+      `;
 }
 
 function calculate(){
-  let shifts=Number(shifts.value);
-  if(!shifts) return;
 
-  let extra=Number(extra.value)||0;
-  let base=Number(rate.value);
-  let holiday=Number(holiday.value);
-  let hours=Number(hours.value);
+  let shiftsVal=Number(document.getElementById("shifts").value);
+  if(!shiftsVal) return;
 
-  let pay=shifts*hours*(base+holiday)+(extra*base);
+  let baseVal=Number(document.getElementById("rate").value);
+  let holidayVal=Number(document.getElementById("holiday").value);
+  let hoursVal=Number(document.getElementById("hours").value);
 
-  let d=format(adjustPayday(getNextPayday()));
+  let pay=shiftsVal*hoursVal*(baseVal+holidayVal);
 
-  entries.push({date:d,shifts,pay});
+  let payday=getNextPayday();
+  let adjusted=adjustPayday(payday);
+
+  entries.push({
+    date:format(adjusted),
+    shifts:shiftsVal,
+    pay:pay
+  });
+
   render();
+
+  document.getElementById("shifts").value="";
 }
 
 function render(){
+
   if(!entries.length){
     tableBody.innerHTML="<tr><td colspan='4'>No entries</td></tr>";
     return;
@@ -313,11 +324,15 @@ function render(){
     </tr>`).join("");
 
   let t=entries.reduce((s,e)=>s+e.pay,0);
+
   total.innerText="£"+t.toFixed(2);
   monthlyTop.innerText="Monthly total: £"+t.toFixed(2);
 }
 
-function removeEntry(i){ entries.splice(i,1); render(); }
+function removeEntry(i){
+  entries.splice(i,1);
+  render();
+}
 
 </script>
 
