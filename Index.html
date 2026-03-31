@@ -61,20 +61,6 @@ td,th{
   text-align:center;
 }
 
-th:nth-child(1),td:nth-child(1){width:30%;}
-th:nth-child(2),td:nth-child(2){width:20%;}
-th:nth-child(3),td:nth-child(3){width:12%;}
-th:nth-child(4),td:nth-child(4){width:23%;}
-th:nth-child(5),td:nth-child(5){width:15%;}
-
-td:nth-child(2){font-weight:600;}
-
-td button{
-  padding:6px 10px;
-  border-radius:10px;
-  width:auto;
-}
-
 tfoot td{font-weight:600;}
 
 .footer{
@@ -183,17 +169,7 @@ Built by <a href="https://connormoizer.com" target="_blank">Connor Moizer</a>
     overflow:auto;
   ">
     <h3>Shift Pay Calculator</h3>
-
-    <p><strong>How it works:</strong><br>
-    Upload Excel once → Enter shifts → Get pay</p>
-
-    <p><strong>Features:</strong><br>
-    • Saves data to your device<br>
-    • No re-upload needed<br>
-    • Auto updates pay periods<br>
-    • Bank holidays adjust paydays<br>
-    • Works offline after setup</p>
-
+    <p>Upload Excel once → Enter shifts → Done</p>
     <button onclick="closeInfo()">Close</button>
   </div>
 </div>
@@ -209,17 +185,14 @@ async function loadBankHolidays(){
   try{
     let res = await fetch("https://www.gov.uk/bank-holidays.json");
     let data = await res.json();
-
     holidays = data["england-and-wales"].events.map(e => e.date);
-
     applyHolidayAdjustments();
-
   }catch(e){
     console.log(e);
   }
 }
 
-// APPLY HOLIDAY LOGIC
+// APPLY ADJUSTMENT
 function applyHolidayAdjustments(){
 
 if(!periods.length || !holidays.length) return;
@@ -233,7 +206,7 @@ while(true){
 let iso = d.toISOString().split("T")[0];
 let day = d.getDay();
 
-if((holidays.includes(iso)) || day===0 || day===6){
+if(holidays.includes(iso) || day===0 || day===6){
   d.setDate(d.getDate()-1);
   adjusted=true;
 }else break;
@@ -416,19 +389,21 @@ Payday: ${formatDate(p.payday)}
 ${p.adjusted ? "<br><small>(Adjusted)</small>" : ""}`;
 }
 
-// CALCULATE
+// CALCULATE (FIXED)
 function calculate(){
 
-let shifts=Number(document.getElementById("shifts").value);
+let shiftsInput = document.getElementById("shifts");
+let shifts = Number(shiftsInput.value);
+
 if(!shifts) return alert("Enter shifts");
 
-let p=periods[document.getElementById("periodSelect").value];
+let p = periods[document.getElementById("periodSelect").value];
 
-let base=+rate.value||0;
-let holiday=+holiday.value||0;
-let hours=+hours.value||0;
+let base = Number(document.getElementById("rate").value) || 0;
+let holidayRate = Number(document.getElementById("holiday").value) || 0;
+let hoursPerShift = Number(document.getElementById("hours").value) || 0;
 
-let pay=shifts*hours*(base+holiday);
+let pay = shifts * hoursPerShift * (base + holidayRate);
 
 entries.push({
 period:`${formatDate(p.from)} → ${formatDate(p.cutoff)}`,
@@ -440,7 +415,7 @@ pay
 localStorage.setItem("savedEntries",JSON.stringify(entries));
 
 render();
-shifts.value="";
+shiftsInput.value="";
 }
 
 // RENDER
