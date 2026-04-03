@@ -97,18 +97,21 @@ Loading...
 
 let periods=[],entries=[],holidays=[];
 
-/* SAVE / LOAD */
+/* SAVE */
 function saveAll(){
-localStorage.setItem("entries",JSON.stringify(entries));
 localStorage.setItem("periods",JSON.stringify(periods));
 }
 
+/* LOAD */
 function loadAll(){
 
-let e = localStorage.getItem("entries");
 let p = localStorage.getItem("periods");
 
-if(e) entries = JSON.parse(e);
+/* 🔥 ALWAYS RESET PAY */
+entries = [];
+localStorage.removeItem("entries");
+
+/* keep Excel */
 if(p) periods = JSON.parse(p);
 
 checkNewPeriod();
@@ -136,14 +139,14 @@ return periods[i];
 return periods[periods.length - 1];
 }
 
-/* RESET WHEN MOVING PERIOD */
+/* RESET WHEN PERIOD CHANGES */
 function checkNewPeriod(){
 
 if(!periods.length) return;
 
 let today = new Date();
 
-let currentIndex = periods.findIndex((p, i) => {
+let index = periods.findIndex((p, i) => {
 
 let from = new Date(p.from);
 let nextFrom = periods[i+1] ? new Date(periods[i+1].from) : null;
@@ -152,20 +155,18 @@ return today >= from && (!nextFrom || today < nextFrom);
 
 });
 
-if(currentIndex === -1){
-currentIndex = periods.length - 1;
-}
+if(index === -1) index = periods.length - 1;
 
 let lastIndex = localStorage.getItem("periodIndex");
 
-if(lastIndex !== null && Number(lastIndex) !== currentIndex){
+if(lastIndex !== null && Number(lastIndex) !== index){
 
 entries = [];
 localStorage.removeItem("entries");
 
 }
 
-localStorage.setItem("periodIndex", currentIndex);
+localStorage.setItem("periodIndex", index);
 }
 
 /* TOGGLE */
@@ -243,7 +244,6 @@ saveAll();
 excelBox.style.display="none";
 
 render();
-
 };
 
 r.readAsArrayBuffer(f);
@@ -261,7 +261,6 @@ let pay=s*Number(hours.value)*(Number(rate.value)+Number(holiday.value));
 
 entries = [{pay}];
 
-saveAll();
 render();
 
 shifts.value="";
@@ -274,7 +273,7 @@ let p=getCurrentPeriod();
 
 let total=entries.reduce((s,e)=>s+e.pay,0);
 let pen=total*(Number(pensionEmployee.value)/100);
-let net = total - pen;
+let net=total-pen;
 
 summaryBox.innerHTML=`
 ${p ? `Working Period: ${formatDate(p.from)} → ${formatDate(p.cutoff)}<br>
@@ -284,14 +283,11 @@ Before deductions: £${total.toFixed(2)}<br>
 Deducted: Pension £${pen.toFixed(2)} | Tax £0.00 | NI £0.00<br>
 After deductions: £${net.toFixed(2)}
 `;
-
 }
 
 /* RESET */
 function resetAll(){
 entries=[];
-localStorage.removeItem("entries");
-
 render();
 shifts.value="";
 }
