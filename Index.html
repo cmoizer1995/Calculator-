@@ -104,13 +104,68 @@ localStorage.setItem("periods",JSON.stringify(periods));
 }
 
 function loadAll(){
-let e=localStorage.getItem("entries");
-let p=localStorage.getItem("periods");
 
-if(e) entries=JSON.parse(e);
-if(p) periods=JSON.parse(p);
+let e = localStorage.getItem("entries");
+let p = localStorage.getItem("periods");
 
+if(e) entries = JSON.parse(e);
+if(p) periods = JSON.parse(p);
+
+checkNewPeriod();
 render();
+}
+
+/* CURRENT PERIOD (FROM BASED) */
+function getCurrentPeriod(){
+
+if(!periods.length) return null;
+
+let today = new Date();
+
+for(let i = 0; i < periods.length; i++){
+
+let from = new Date(periods[i].from);
+let nextFrom = periods[i+1] ? new Date(periods[i+1].from) : null;
+
+if(today >= from && (!nextFrom || today < nextFrom)){
+return periods[i];
+}
+
+}
+
+return periods[periods.length - 1];
+}
+
+/* RESET WHEN MOVING PERIOD */
+function checkNewPeriod(){
+
+if(!periods.length) return;
+
+let today = new Date();
+
+let currentIndex = periods.findIndex((p, i) => {
+
+let from = new Date(p.from);
+let nextFrom = periods[i+1] ? new Date(periods[i+1].from) : null;
+
+return today >= from && (!nextFrom || today < nextFrom);
+
+});
+
+if(currentIndex === -1){
+currentIndex = periods.length - 1;
+}
+
+let lastIndex = localStorage.getItem("periodIndex");
+
+if(lastIndex !== null && Number(lastIndex) !== currentIndex){
+
+entries = [];
+localStorage.removeItem("entries");
+
+}
+
+localStorage.setItem("periodIndex", currentIndex);
 }
 
 /* TOGGLE */
@@ -149,20 +204,6 @@ d.setDate(d.getDate()-1);
 return d;
 }
 
-/* CURRENT PERIOD */
-function getCurrentPeriod(){
-if(!periods.length) return null;
-
-let today=new Date();
-let i=periods.findIndex(p=>{
-let n=new Date(p.payday);
-n.setDate(n.getDate()+1);
-return today<=n;
-});
-if(i===-1)i=periods.length-1;
-return periods[i];
-}
-
 /* LOAD EXCEL */
 async function loadExcel(){
 
@@ -196,7 +237,7 @@ periods.push({from:f,cutoff:c,payday:adjustPayday(p)});
 }
 });
 
-periods.sort((a,b)=>a.payday-b.payday);
+periods.sort((a,b)=>a.from-b.from);
 
 saveAll();
 excelBox.style.display="none";
@@ -208,7 +249,7 @@ render();
 r.readAsArrayBuffer(f);
 }
 
-/* CALCULATE (OVERWRITE FIX) */
+/* CALCULATE */
 function calculate(){
 
 if(!periods.length)return alert("Load Excel");
@@ -218,7 +259,6 @@ if(!s)return;
 
 let pay=s*Number(hours.value)*(Number(rate.value)+Number(holiday.value));
 
-/* 🔥 OVERWRITE INSTEAD OF STACK */
 entries = [{pay}];
 
 saveAll();
@@ -233,15 +273,16 @@ function render(){
 let p=getCurrentPeriod();
 
 let total=entries.reduce((s,e)=>s+e.pay,0);
-
 let pen=total*(Number(pensionEmployee.value)/100);
+let net = total - pen;
 
 summaryBox.innerHTML=`
 ${p ? `Working Period: ${formatDate(p.from)} → ${formatDate(p.cutoff)}<br>
 Payday: ${formatDate(p.payday)}<br><br>` : ""}
 
 Before deductions: £${total.toFixed(2)}<br>
-Deducted: Pension £${pen.toFixed(2)} | Tax £0.00 | NI £0.00
+Deducted: Pension £${pen.toFixed(2)} | Tax £0.00 | NI £0.00<br>
+After deductions: £${net.toFixed(2)}
 `;
 
 }
