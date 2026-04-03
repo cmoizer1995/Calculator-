@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 
-<title>Shift Pay Calculator</title>
+<title>Cleaner | Shift Pay Calculator</title>
 
 <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
 
@@ -12,99 +12,50 @@
 *{box-sizing:border-box;}
 
 body{
-  font-family:system-ui;
-  padding:20px;
-  margin:0;
-  background:#fff;
-  color:#000;
+font-family:system-ui;
+margin:0;
+background:#f5f5f5;
 }
 
-body.dark{
-  background:#0f0f0f;
-  color:#fff;
-}
-
-/* 🔥 RESPONSIVE WRAP */
 .wrap{
-  width:100%;
-  max-width:1100px;
-  margin:auto;
+max-width:900px;
+margin:auto;
+padding:16px;
+display:flex;
+flex-direction:column;
+gap:16px;
+min-height:100vh;
 }
 
-.block{margin-bottom:14px;}
-
-button,input,select{
-  width:100%;
-  padding:16px;
-  border-radius:16px;
-  border:1px solid #ccc;
-  font-size:16px;
-  background:#f9f9f9;
+.card{
+background:#fff;
+padding:18px;
+border-radius:20px;
+box-shadow:0 4px 12px rgba(0,0,0,0.05);
+font-size:18px;
+line-height:1.6;
 }
 
-body.dark button,
-body.dark input,
-body.dark select{
-  background:#1e1e1e;
-  border-color:#333;
-  color:#fff;
+input,button{
+width:100%;
+padding:18px;
+border-radius:18px;
+border:1px solid #ddd;
+font-size:16px;
 }
 
-.btn-row{display:flex;gap:12px;}
-.btn-row button{flex:1;}
-
-table{
-  width:100%;
-  border-collapse:collapse;
-  margin-top:20px;
-  table-layout:fixed;
+.btn-row{
+display:flex;
+gap:12px;
 }
 
-td,th{
-  padding:14px 10px;
-  font-size:15px;
-  border-bottom:1px solid #ddd;
-  text-align:center;
+.btn-row button{
+flex:1;
+background:#f0f0f0;
 }
 
-tfoot td{font-weight:600;}
-
-.footer{
-  text-align:center;
-  margin-top:28px;
-  font-size:14px;
-  opacity:0.7;
-}
-
-#periodSelect{
-  position:absolute;
-  opacity:0;
-  pointer-events:none;
-  height:0;
-}
-
-body.dark #infoBox{
-  background:#1e1e1e;
-  color:#fff;
-}
-
-/* 📱 TABLET */
-@media (min-width:600px){
-.wrap{max-width:700px;}
-button,input{font-size:17px;}
-}
-
-/* 💻 DESKTOP */
-@media (min-width:900px){
-.wrap{max-width:1100px;}
-.btn-row{gap:20px;}
-.block{margin-bottom:18px;}
-}
-
-/* 🖥️ LARGE */
-@media (min-width:1200px){
-.wrap{max-width:1200px;}
-}
+table{display:none;}
+h3{display:none;}
 </style>
 </head>
 
@@ -112,330 +63,208 @@ button,input{font-size:17px;}
 
 <div class="wrap">
 
-<div class="block" id="periodText"></div>
-<div class="block" id="monthlyTop">Monthly total: £0.00</div>
-
-<div class="block btn-row">
-<button onclick="toggleExcel()">📄</button>
-<button onclick="toggleSettings()">⚙️</button>
-<button onclick="toggleDark()">🌙</button>
-<button onclick="showInfo()">ℹ️</button>
+<div class="card" id="summaryBox">
+Loading...
 </div>
 
-<div id="excelBox" class="block" style="display:none;">
+<div class="btn-row">
+<button onclick="toggleExcel()">📄</button>
+<button onclick="toggleSettings()">⚙️</button>
+</div>
+
+<div id="excelBox" class="card" style="display:none;">
 <input type="file" id="fileInput">
 <button onclick="loadExcel()">Load Excel</button>
 </div>
 
-<div id="settingsBox" class="block" style="display:none;">
+<div id="settingsBox" class="card" style="display:none;">
 <input id="rate" type="number" value="12.21">
 <input id="holiday" type="number" value="1.47">
 <input id="hours" type="number" value="7">
+<input id="pensionEmployee" type="number" value="5">
 </div>
 
-<select id="periodSelect" onchange="updateFromDropdown()"></select>
+<input id="shifts" placeholder="Shifts">
 
-<div class="block">
-<input id="shifts" type="number" placeholder="Shifts">
-</div>
-
-<div class="block">
+<div class="btn-row">
 <button onclick="calculate()">Add</button>
-</div>
-
-<div class="block">
 <button onclick="resetAll()">Reset</button>
 </div>
 
-<table>
-<thead>
-<tr>
-<th>Period</th>
-<th>Payday</th>
-<th>Shifts</th>
-<th>Pay (£)</th>
-<th></th>
-</tr>
-</thead>
-
-<tbody id="tableBody">
-<tr><td colspan="5">No entries</td></tr>
-</tbody>
-
-<tfoot>
-<tr>
-<td colspan="3">Total</td>
-<td id="total">£0.00</td>
-<td></td>
-</tr>
-</tfoot>
-</table>
-
-<div class="footer">
-Built by <a href="https://connormoizer.com" target="_blank">Connor Moizer</a>
-</div>
-
-</div>
-
-<!-- INFO MODAL -->
-<div id="infoModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.6); z-index:999;">
-  <div id="infoBox" style="
-    position:absolute;
-    top:50%;
-    left:50%;
-    transform:translate(-50%,-50%);
-    width:90%;
-    max-width:400px;
-    background:#fff;
-    padding:20px;
-    border-radius:20px;
-    max-height:80%;
-    overflow:auto;
-  ">
-    <h3>Shift Pay Calculator</h3>
-    <p>
-    Upload Excel once → Enter shifts → Get pay<br><br>
-    • Saves to your device<br>
-    • No re-upload needed<br>
-    • Bank holidays auto-adjust paydays<br>
-    • Works offline after setup
-    </p>
-    <button onclick="closeInfo()">Close</button>
-  </div>
 </div>
 
 <script>
 
-let periods=[];
-let entries=[];
-let holidays=[];
+let periods=[],entries=[],holidays=[];
 
-// BANK HOLIDAYS
-async function loadBankHolidays(){
-  try{
-    let res = await fetch("https://www.gov.uk/bank-holidays.json");
-    let data = await res.json();
-    holidays = data["england-and-wales"].events.map(e => e.date);
-    applyHolidayAdjustments();
-  }catch(e){}
+/* SAVE / LOAD */
+function saveAll(){
+localStorage.setItem("entries",JSON.stringify(entries));
+localStorage.setItem("periods",JSON.stringify(periods));
 }
 
-// APPLY ADJUST
-function applyHolidayAdjustments(){
+function loadAll(){
+let e=localStorage.getItem("entries");
+let p=localStorage.getItem("periods");
 
-if(!periods.length || !holidays.length) return;
+if(e) entries=JSON.parse(e);
+if(p) periods=JSON.parse(p);
 
-periods = periods.map(p => {
-
-let d = new Date(p.payday);
-let adjusted=false;
-
-while(true){
-let iso=d.toISOString().split("T")[0];
-let day=d.getDay();
-
-if(holidays.includes(iso)||day===0||day===6){
-d.setDate(d.getDate()-1);
-adjusted=true;
-}else break;
-}
-
-return {...p,payday:d,adjusted};
-});
-
-localStorage.setItem("savedPeriods", JSON.stringify(periods));
-
-populateDropdown();
 render();
 }
 
-// LOAD
-window.onload=function(){
-
-let savedEntries=localStorage.getItem("savedEntries");
-if(savedEntries) entries=JSON.parse(savedEntries);
-
-let savedPeriods=localStorage.getItem("savedPeriods");
-
-if(savedPeriods){
-periods=JSON.parse(savedPeriods).map(p=>({
-from:new Date(p.from),
-cutoff:new Date(p.cutoff),
-payday:new Date(p.payday),
-adjusted:p.adjusted||false
-}));
-
-filterOldPeriods();
-populateDropdown();
+/* TOGGLE */
+function toggleExcel(){
+excelBox.style.display=excelBox.style.display==="none"?"block":"none";
+}
+function toggleSettings(){
+settingsBox.style.display=settingsBox.style.display==="none"?"block":"none";
 }
 
-if(periods.length){
-document.getElementById("excelBox").style.display="none";
-}
-
-let dark=localStorage.getItem("darkMode");
-if(dark==="on") document.body.classList.add("dark");
-
-render();
-};
-
-// TOGGLES
-function toggleExcel(){excelBox.style.display=excelBox.style.display==="none"?"block":"none";}
-function toggleSettings(){settingsBox.style.display=settingsBox.style.display==="none"?"block":"none";}
-function toggleDark(){document.body.classList.toggle("dark");localStorage.setItem("darkMode",document.body.classList.contains("dark")?"on":"off");}
-function showInfo(){infoModal.style.display="block";}
-function closeInfo(){infoModal.style.display="none";}
-function resetAll(){entries=[];localStorage.removeItem("savedEntries");render();}
-
-// DATE
+/* DATE */
 function parseDate(v){
-if(!v)return null;
-if(v instanceof Date)return v;
-if(typeof v==="number")return new Date((v-25569)*86400000);
+if(typeof v==="number") return new Date((v-25569)*86400000);
 return new Date(v);
 }
-
 function formatDate(d){
-return d.toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'});
+return new Date(d).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'});
 }
 
-// FILTER
-function filterOldPeriods(){
+/* BANK HOLIDAYS */
+async function loadBankHolidays(){
+let r=await fetch("https://www.gov.uk/bank-holidays.json");
+let d=await r.json();
+holidays=d["england-and-wales"].events.map(e=>e.date);
+}
+
+/* ADJUST PAYDAY */
+function adjustPayday(date){
+let d=new Date(date);
+while(true){
+let iso=d.toISOString().split("T")[0];
+if(d.getDay()==0||d.getDay()==6||holidays.includes(iso)){
+d.setDate(d.getDate()-1);
+}else break;
+}
+return d;
+}
+
+/* CURRENT PERIOD */
+function getCurrentPeriod(){
+if(!periods.length) return null;
+
 let today=new Date();
-periods=periods.filter(p=>{
-let next=new Date(p.payday);next.setDate(next.getDate()+1);
-return today<next;
+let i=periods.findIndex(p=>{
+let n=new Date(p.payday);
+n.setDate(n.getDate()+1);
+return today<=n;
 });
-localStorage.setItem("savedPeriods", JSON.stringify(periods));
+if(i===-1)i=periods.length-1;
+return periods[i];
 }
 
-// LOAD EXCEL
-function loadExcel(){
+/* LOAD EXCEL */
+async function loadExcel(){
 
-let file=fileInput.files[0];
-if(!file)return alert("Upload file");
+let f=fileInput.files[0];
+if(!f)return alert("Upload file");
 
-let reader=new FileReader();
+await loadBankHolidays();
 
-reader.onload=function(e){
+let r=new FileReader();
+
+r.onload=function(e){
 
 let wb=XLSX.read(e.target.result,{type:'array'});
 let rows=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{header:1});
 
 periods=[];
 
-let headerRow=rows.find(r=>r.map(x=>String(x).toUpperCase()).includes("FROM"));
+let hi=rows.findIndex(r=>r.map(x=>String(x).toUpperCase()).includes("PAYDATE"));
+let h=rows[hi];
 
-let fromIndex=headerRow.findIndex(c=>String(c).toUpperCase()==="FROM");
-let cutoffIndex=headerRow.findIndex(c=>String(c).toUpperCase()==="CUT OFF");
-let paydayIndex=headerRow.findIndex(c=>String(c).toUpperCase()==="PAYDATE");
+let fi=h.findIndex(c=>String(c).toUpperCase()==="FROM");
+let ci=h.findIndex(c=>String(c).toUpperCase().includes("CUT"));
+let pi=h.findIndex(c=>String(c).toUpperCase()==="PAYDATE");
 
-rows.forEach(r=>{
-let from=parseDate(r[fromIndex]);
-let cutoff=parseDate(r[cutoffIndex]);
-let payday=parseDate(r[paydayIndex]);
-if(from&&cutoff&&payday){
-periods.push({from,cutoff,payday,adjusted:false});
+rows.slice(hi+1).forEach(r=>{
+let f=parseDate(r[fi]);
+let c=parseDate(r[ci]);
+let p=parseDate(r[pi]);
+if(f&&c&&p){
+periods.push({from:f,cutoff:c,payday:adjustPayday(p)});
 }
 });
 
 periods.sort((a,b)=>a.payday-b.payday);
 
-localStorage.setItem("savedPeriods", JSON.stringify(periods));
-
-filterOldPeriods();
-populateDropdown();
-
-loadBankHolidays();
-
+saveAll();
 excelBox.style.display="none";
+
+render();
+
 };
 
-reader.readAsArrayBuffer(file);
+r.readAsArrayBuffer(f);
 }
 
-// DROPDOWN
-function populateDropdown(){
-periodSelect.innerHTML='';
-periods.forEach((p,i)=>{
-let o=document.createElement("option");
-o.value=i;
-periodSelect.appendChild(o);
-});
-if(periods.length){
-periodSelect.value=0;
-updateFromDropdown();
-}
-}
-
-// DISPLAY
-function updateFromDropdown(){
-let p=periods[periodSelect.value];
-periodText.innerHTML=
-`${formatDate(p.from)} → ${formatDate(p.cutoff)}<br>
-Payday: ${formatDate(p.payday)}
-${p.adjusted?"<br><small>(Adjusted)</small>":""}`;
-}
-
-// CALCULATE
+/* CALCULATE (OVERWRITE FIX) */
 function calculate(){
 
-let shiftsInput=document.getElementById("shifts");
-let shifts=Number(shiftsInput.value);
-if(!shifts)return alert("Enter shifts");
+if(!periods.length)return alert("Load Excel");
 
-let p=periods[periodSelect.value];
+let s=Number(shifts.value);
+if(!s)return;
 
-let base=Number(rate.value)||0;
-let holidayRate=Number(document.getElementById("holiday").value)||0;
-let hoursPerShift=Number(document.getElementById("hours").value)||0;
+let pay=s*Number(hours.value)*(Number(rate.value)+Number(holiday.value));
 
-let pay=shifts*hoursPerShift*(base+holidayRate);
+/* 🔥 OVERWRITE INSTEAD OF STACK */
+entries = [{pay}];
 
-entries.push({
-period:`${formatDate(p.from)} → ${formatDate(p.cutoff)}`,
-payday:formatDate(p.payday),
-shifts,
-pay
-});
-
-localStorage.setItem("savedEntries",JSON.stringify(entries));
-
+saveAll();
 render();
-shiftsInput.value="";
+
+shifts.value="";
 }
 
-// RENDER
+/* RENDER */
 function render(){
 
-if(!entries.length){
-tableBody.innerHTML="<tr><td colspan='5'>No entries</td></tr>";
-total.innerText="£0.00";
-monthlyTop.innerText="Monthly total: £0.00";
-return;
+let p=getCurrentPeriod();
+
+let total=entries.reduce((s,e)=>s+e.pay,0);
+
+let pen=total*(Number(pensionEmployee.value)/100);
+
+summaryBox.innerHTML=`
+${p ? `Working Period: ${formatDate(p.from)} → ${formatDate(p.cutoff)}<br>
+Payday: ${formatDate(p.payday)}<br><br>` : ""}
+
+Before deductions: £${total.toFixed(2)}<br>
+Deducted: Pension £${pen.toFixed(2)} | Tax £0.00 | NI £0.00
+`;
+
 }
 
-tableBody.innerHTML=entries.map((e,i)=>`
-<tr>
-<td>${e.period}</td>
-<td>${e.payday}</td>
-<td>${e.shifts}</td>
-<td>£${e.pay.toFixed(2)}</td>
-<td><button onclick="removeEntry(${i})">x</button></td>
-</tr>`).join("");
+/* RESET */
+function resetAll(){
+entries=[];
+localStorage.removeItem("entries");
 
-let totalVal=entries.reduce((s,e)=>s+e.pay,0);
-
-total.innerText="£"+totalVal.toFixed(2);
-monthlyTop.innerText="Monthly total: £"+totalVal.toFixed(2);
-}
-
-// REMOVE
-function removeEntry(i){
-entries.splice(i,1);
-localStorage.setItem("savedEntries",JSON.stringify(entries));
 render();
+shifts.value="";
 }
+
+/* ENTER KEY */
+shifts.addEventListener("keydown",function(e){
+if(e.key==="Enter"){
+e.preventDefault();
+calculate();
+}
+});
+
+/* INIT */
+loadAll();
 
 </script>
 
