@@ -1,4 +1,11 @@
-<!-- 🔒 LOCKED VERSION - DO NOT MODIFY CORE LOGIC -->
+<!--
+© 2026 Connor Moizer. All rights reserved.
+
+This software is proprietary and confidential.
+Unauthorized copying, modification, distribution, or use is strictly prohibited.
+
+https://ConnorMoizer.com
+-->
 
 <!DOCTYPE html>
 <html>
@@ -91,19 +98,54 @@ font-weight:600;
 margin-bottom:10px;
 }
 
-/* INSTALL POPUP */
 #installPrompt{
 position:fixed;
-bottom:20px;
-left:20px;
-right:20px;
-background:#111827;
-color:#fff;
-padding:16px;
-border-radius:16px;
+bottom:0;
+left:0;
+right:0;
+background:rgba(255,255,255,0.95);
+color:#000;
+padding:20px;
+border-radius:20px 20px 0 0;
 display:none;
 z-index:9999;
-box-shadow:0 10px 30px rgba(0,0,0,0.3);
+backdrop-filter:blur(20px);
+box-shadow:0 -10px 30px rgba(0,0,0,0.1);
+animation:slideUp 0.3s ease;
+}
+
+body.dark #installPrompt{
+background:rgba(17,24,39,0.95);
+color:#fff;
+box-shadow:0 -10px 30px rgba(0,0,0,0.4);
+}
+
+body.dark #installPrompt button{
+background:#374151;
+color:#fff;
+border:1px solid #4b5563;
+}
+
+@keyframes slideUp{
+from{transform:translateY(100%);}
+to{transform:translateY(0);}
+}
+
+.footer{
+text-align:center;
+font-size:13px;
+opacity:0.7;
+margin-top:10px;
+}
+
+.footer a{
+color:inherit;
+text-decoration:none;
+font-weight:500;
+}
+
+.footer a:hover{
+text-decoration:underline;
 }
 </style>
 </head>
@@ -142,20 +184,31 @@ box-shadow:0 10px 30px rgba(0,0,0,0.3);
 <button onclick="resetAll()">Reset</button>
 </div>
 
+<div class="footer">
+Created by <a href="https://ConnorMoizer.com" target="_blank">Connor Moizer</a>
 </div>
 
-<!-- INSTALL POPUP -->
-<div id="installPrompt">
-<div style="margin-bottom:10px;">
-Install Cleaner Pay on your device?
 </div>
+
+<div id="installPrompt">
+<div style="text-align:center;font-weight:600;margin-bottom:10px;">
+Install Cleaner Pay
+</div>
+
+<div id="installText" style="font-size:14px;text-align:center;margin-bottom:15px;"></div>
+
 <div style="display:flex;gap:10px;">
-<button onclick="confirmInstall()">Yes</button>
-<button onclick="closeInstall()">No</button>
+<button onclick="confirmInstall()">Install</button>
+<button onclick="closeInstall()">Cancel</button>
 </div>
 </div>
 
 <script>
+
+/*
+© 2026 Connor Moizer
+All rights reserved
+*/
 
 document.addEventListener("DOMContentLoaded", function(){
 
@@ -168,27 +221,44 @@ const excelBox=document.getElementById("excelBox");
 const settingsBox=document.getElementById("settingsBox");
 const fileInput=document.getElementById("fileInput");
 
-/* INSTALL LOGIC */
+/* INSTALL */
 let deferredPrompt=null;
 
-window.addEventListener("beforeinstallprompt", (e)=>{
+window.addEventListener("beforeinstallprompt",(e)=>{
 e.preventDefault();
 deferredPrompt=e;
 });
 
-window.showInstall=()=>{
-document.getElementById("installPrompt").style.display="block";
+function isIOS(){
+return /iphone|ipad|ipod/i.test(navigator.userAgent);
+}
+
+window.showInstall=function(){
+let el=document.getElementById("installPrompt");
+
+if(el.style.display==="block"){
+el.style.display="none";
+return;
+}
+
+el.style.display="block";
+
+if(isIOS()){
+document.getElementById("installText").innerHTML=
+"Tap <b>Share</b> (⬆️) then <b>Add to Home Screen</b>";
+}else{
+document.getElementById("installText").innerHTML=
+"Install this app on your device";
+}
 };
 
-window.closeInstall=()=>{
+window.closeInstall=function(){
 document.getElementById("installPrompt").style.display="none";
 };
 
-window.confirmInstall=()=>{
-
+window.confirmInstall=function(){
 closeInstall();
 
-/* ANDROID */
 if(deferredPrompt){
 deferredPrompt.prompt();
 deferredPrompt.userChoice.then(()=>{
@@ -197,9 +267,7 @@ deferredPrompt=null;
 return;
 }
 
-/* iOS */
 alert("Tap Share → Add to Home Screen");
-
 };
 
 /* HEADER */
@@ -382,17 +450,15 @@ entries=[];
 render();
 };
 
-/* ENTER FIX */
+/* ENTER */
 shifts.addEventListener("keyup", function(e){
-
 if(e.key==="Enter"||e.key==="Go"||e.key==="Done"){
 e.preventDefault();
 calculate();
 }
-
 });
 
-/* SAFE SERVICE WORKER */
+/* SERVICE WORKER */
 setTimeout(()=>{
 if("serviceWorker" in navigator){
 navigator.serviceWorker.register("sw.js");
