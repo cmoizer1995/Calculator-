@@ -11,7 +11,6 @@ https://ConnorMoizer.com
 <html>
 <head>
 <meta charset="UTF-8">
-
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
 
 <title>Cleaner Pay Calculator</title>
@@ -19,9 +18,6 @@ https://ConnorMoizer.com
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#0b1220">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="CleanerPay">
-<link rel="apple-touch-icon" href="icon-192.png">
 
 <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
 
@@ -33,8 +29,6 @@ font-family:-apple-system,system-ui;
 margin:0;
 background:#f5f5f5;
 transition:0.2s;
-padding-top:env(safe-area-inset-top);
-padding-bottom:env(safe-area-inset-bottom);
 }
 
 body.dark{
@@ -42,100 +36,43 @@ background:#0b1220;
 color:#fff;
 }
 
-.wrap{
-width:100%;
-max-width:1200px;
-margin:auto;
-padding:clamp(12px,3vw,24px);
-display:flex;
-flex-direction:column;
-gap:clamp(12px,2vw,20px);
-}
+.wrap{max-width:900px;margin:auto;padding:16px;display:flex;flex-direction:column;gap:16px;}
 
 .card{
 background:#fff;
-padding:clamp(14px,2.5vw,22px);
+padding:18px;
 border-radius:20px;
-box-shadow:0 6px 20px rgba(0,0,0,0.08);
+box-shadow:0 4px 12px rgba(0,0,0,0.05);
 }
 
-body.dark .card{
-background:#111827;
-}
+body.dark .card{background:#111827;}
 
-input,button{
+input,button,select{
 width:100%;
-padding:clamp(14px,2.5vw,20px);
+padding:18px;
 border-radius:18px;
 border:1px solid #ddd;
 font-size:16px;
 }
 
 body.dark input,
-body.dark button{
+body.dark button,
+body.dark select{
 background:#1f2937;
 color:#fff;
 border:1px solid #374151;
 }
 
-.btn-row{
-display:flex;
-gap:12px;
-flex-wrap:wrap;
-}
+.btn-row{display:flex;gap:12px;}
+.btn-row button{flex:1;background:#f0f0f0;}
+body.dark .btn-row button{background:#374151;}
 
-.btn-row button{
-flex:1;
-background:#f0f0f0;
-}
-
-body.dark .btn-row button{
-background:#374151;
-}
-
-#liveHeader{
-font-weight:600;
-margin-bottom:10px;
-}
-
-#installPrompt{
-position:fixed;
-bottom:0;
-left:0;
-right:0;
-background:rgba(255,255,255,0.95);
-color:#000;
-padding:20px;
-border-radius:20px 20px 0 0;
-display:none;
-z-index:9999;
-backdrop-filter:blur(20px);
-box-shadow:0 -10px 30px rgba(0,0,0,0.1);
-animation:slideUp 0.3s ease;
-}
-
-body.dark #installPrompt{
-background:rgba(17,24,39,0.95);
-color:#fff;
-box-shadow:0 -10px 30px rgba(0,0,0,0.4);
-}
-
-body.dark #installPrompt button{
-background:#374151;
-color:#fff;
-border:1px solid #4b5563;
-}
-
-@keyframes slideUp{
-from{transform:translateY(100%);}
-to{transform:translateY(0);}
-}
+#liveHeader{font-weight:bold;margin-bottom:10px;}
 
 .footer{
 text-align:center;
 font-size:13px;
 opacity:0.7;
-margin-top:10px;
 }
 
 .footer a{
@@ -146,6 +83,24 @@ font-weight:500;
 
 .footer a:hover{
 text-decoration:underline;
+}
+
+/* INSTALL POPUP */
+#installPrompt{
+position:fixed;
+bottom:0;
+left:0;
+right:0;
+background:rgba(255,255,255,0.95);
+padding:20px;
+display:none;
+border-radius:20px 20px 0 0;
+box-shadow:0 -10px 30px rgba(0,0,0,0.1);
+}
+
+body.dark #installPrompt{
+background:#111827;
+color:#fff;
 }
 </style>
 </head>
@@ -175,6 +130,12 @@ text-decoration:underline;
 <input id="rate" type="number" value="12.21">
 <input id="holiday" type="number" value="1.47375">
 <input id="hours" type="number" value="7">
+
+<label>Pension</label>
+<select id="pensionToggle">
+<option value="yes">Yes</option>
+<option value="no">No</option>
+</select>
 </div>
 
 <input id="shifts" placeholder="Shifts">
@@ -190,17 +151,22 @@ Created by <a href="https://ConnorMoizer.com" target="_blank">Connor Moizer</a>
 
 </div>
 
+<!-- INSTALL POPUP -->
 <div id="installPrompt">
-<div style="text-align:center;font-weight:600;margin-bottom:10px;">
+
+<div style="text-align:center;font-weight:600;font-size:20px;margin-bottom:10px;">
 Install Cleaner Pay
 </div>
 
-<div id="installText" style="font-size:14px;text-align:center;margin-bottom:15px;"></div>
+<div style="text-align:center;font-size:16px;margin-bottom:20px;">
+Tap <b>Share (⬆️)</b> then <b>Add to Home Screen</b>
+</div>
 
-<div style="display:flex;gap:10px;">
+<div style="display:flex;gap:12px;">
 <button onclick="confirmInstall()">Install</button>
 <button onclick="closeInstall()">Cancel</button>
 </div>
+
 </div>
 
 <script>
@@ -210,30 +176,43 @@ Install Cleaner Pay
 All rights reserved
 */
 
-document.addEventListener("DOMContentLoaded", function(){
+let periods=[],entries=[],holidays=[];
 
-let periods=[],entries=[];
+/* HEADER */
+function loadHeaderInstant(){
+let now=new Date();
 
-const shifts=document.getElementById("shifts");
-const summaryBox=document.getElementById("summaryBox");
-const liveHeader=document.getElementById("liveHeader");
-const excelBox=document.getElementById("excelBox");
-const settingsBox=document.getElementById("settingsBox");
-const fileInput=document.getElementById("fileInput");
+let date=now.toLocaleDateString('en-GB',{
+day:'numeric',
+month:'short',
+year:'numeric'
+});
+
+let time=now.toLocaleTimeString('en-GB',{
+hour:'numeric',
+minute:'2-digit',
+second:'2-digit'
+});
+
+liveHeader.innerHTML=`${date} • ${time}`;
+}
+setInterval(loadHeaderInstant,1000);
+
+/* DARK MODE */
+function toggleDark(){
+document.body.classList.toggle("dark");
+localStorage.setItem("dark",document.body.classList.contains("dark"));
+}
+if(localStorage.getItem("dark")==="true") document.body.classList.add("dark");
 
 /* INSTALL */
-let deferredPrompt=null;
-
+let deferredPrompt;
 window.addEventListener("beforeinstallprompt",(e)=>{
 e.preventDefault();
 deferredPrompt=e;
 });
 
-function isIOS(){
-return /iphone|ipad|ipod/i.test(navigator.userAgent);
-}
-
-window.showInstall=function(){
+function showInstall(){
 let el=document.getElementById("installPrompt");
 
 if(el.style.display==="block"){
@@ -242,57 +221,26 @@ return;
 }
 
 el.style.display="block";
-
-if(isIOS()){
-document.getElementById("installText").innerHTML=
-"Tap <b>Share</b> (⬆️) then <b>Add to Home Screen</b>";
-}else{
-document.getElementById("installText").innerHTML=
-"Install this app on your device";
 }
-};
 
-window.closeInstall=function(){
+function closeInstall(){
 document.getElementById("installPrompt").style.display="none";
-};
+}
 
-window.confirmInstall=function(){
+function confirmInstall(){
 closeInstall();
 
 if(deferredPrompt){
 deferredPrompt.prompt();
-deferredPrompt.userChoice.then(()=>{
-deferredPrompt=null;
-});
 return;
 }
 
 alert("Tap Share → Add to Home Screen");
-};
-
-/* HEADER */
-function loadHeader(){
-let now=new Date();
-liveHeader.innerHTML=
-now.toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'})
-+" • "+
-now.toLocaleTimeString('en-GB',{hour:'numeric',minute:'2-digit',second:'2-digit'});
-}
-setInterval(loadHeader,1000);
-
-/* DARK MODE */
-window.toggleDark=()=>{
-document.body.classList.toggle("dark");
-localStorage.setItem("dark",document.body.classList.contains("dark"));
-};
-
-if(localStorage.getItem("dark")==="true"){
-document.body.classList.add("dark");
 }
 
 /* TOGGLES */
-window.toggleExcel=()=>excelBox.style.display=excelBox.style.display==="none"?"block":"none";
-window.toggleSettings=()=>settingsBox.style.display=settingsBox.style.display==="none"?"block":"none";
+function toggleExcel(){excelBox.style.display=excelBox.style.display==="none"?"block":"none";}
+function toggleSettings(){settingsBox.style.display=settingsBox.style.display==="none"?"block":"none";}
 
 /* ROUND */
 function round(v){return Math.round(v*100)/100;}
@@ -307,7 +255,7 @@ return new Date(d).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:
 }
 
 /* LOAD EXCEL */
-window.loadExcel=async function(){
+async function loadExcel(){
 
 let f=fileInput.files[0];
 if(!f)return alert("Upload file");
@@ -332,6 +280,7 @@ rows.slice(hi+1).forEach(r=>{
 let f=parseDate(r[fi]);
 let c=parseDate(r[ci]);
 let p=parseDate(r[pi]);
+
 if(f&&c&&p){
 periods.push({from:f,cutoff:c,payday:p});
 }
@@ -340,65 +289,46 @@ periods.push({from:f,cutoff:c,payday:p});
 localStorage.setItem("periods",JSON.stringify(periods));
 
 entries=[];
-shifts.value="";
 render();
-excelBox.style.display="none";
-
 };
 
 r.readAsArrayBuffer(f);
-};
+}
 
 /* LOAD */
 function loadAll(){
 let p=localStorage.getItem("periods");
 if(p) periods=JSON.parse(p);
-entries=[];
 render();
 }
 
 /* PERIOD */
 function getCurrentPeriod(){
-if(!periods.length) return null;
-
 let today=new Date();
-
-for(let i=0;i<periods.length;i++){
-let from=new Date(periods[i].from);
-let nextFrom=periods[i+1]?new Date(periods[i+1].from):null;
-
-if(today>=from && (!nextFrom||today<nextFrom)){
-return periods[i];
-}
-}
-return null;
+return periods.find(p=>today>=new Date(p.from))||null;
 }
 
 /* CALCULATE */
-window.calculate=function(){
+function calculate(){
 
 let s=Number(shifts.value);
-if(!s||s<=0){shifts.value="";return;}
+if(!s)return;
 
-let h=Number(document.getElementById("hours").value);
-let total=s*h;
-
-let basic=round(total*Number(document.getElementById("rate").value));
-let holiday=round(total*Number(document.getElementById("holiday").value));
-let gross=round(basic+holiday);
+let total=s*Number(hours.value);
+let gross=round(total*rate.value + total*holiday.value);
 
 entries=[{gross,shifts:s}];
 
 render();
-shifts.value="";
 
+/* CLOSE KEYBOARD */
 setTimeout(()=>{
 shifts.blur();
 document.activeElement.blur();
 shifts.setAttribute("readonly", true);
 setTimeout(()=>shifts.removeAttribute("readonly"), 50);
 },50);
-};
+}
 
 /* RENDER */
 function render(){
@@ -406,70 +336,45 @@ function render(){
 let p=getCurrentPeriod();
 
 let gross=entries.reduce((s,e)=>s+(e.gross||0),0);
-let shiftsCount=entries.reduce((s,e)=>s+(e.shifts||0),0);
 
-let pen=round(gross*0.04);
-
-let weeks=2;
-let weekly=round(gross/weeks);
-let ni=0;
-if(weekly>242){
-ni=round((weekly-242)*0.08)*weeks;
+/* PENSION */
+let pen=0;
+if(localStorage.getItem("pensionToggle")!=="no"){
+pen=round(gross*0.04);
 }
 
-let allowance=(12570/52)*weeks;
-let tax=0;
-if(gross>allowance){
-tax=round((gross-allowance)*0.2);
-}
-
-let net=round(gross-pen-tax-ni);
+let net=round(gross-pen);
 
 summaryBox.innerHTML=`
-
-${p && p.from && p.cutoff && p.payday ? `
-Working Period: ${formatDate(p.from)} → ${formatDate(p.cutoff)}<br>
-Payday: ${formatDate(p.payday)}<br><br>
-` : ""}
-
+${p?`Working Period: ${formatDate(p.from)} → ${formatDate(p.cutoff)}<br>Payday: ${formatDate(p.payday)}<br><br>`:""}
 Before deductions: £${gross.toFixed(2)}<br>
-
-Deducted:
-Pension £${pen.toFixed(2)} |
-Tax £${tax.toFixed(2)} |
-NI £${ni.toFixed(2)}<br>
-
-After deductions: £${net.toFixed(2)} (${shiftsCount||0} shifts)
-
+Deducted: Pension £${pen.toFixed(2)}<br>
+After deductions: £${net.toFixed(2)}
 `;
 }
 
 /* RESET */
-window.resetAll=()=>{
+function resetAll(){
 entries=[];
 render();
-};
+}
 
-/* ENTER */
-shifts.addEventListener("keyup", function(e){
+/* ENTER FIX */
+shifts.addEventListener("keydown",function(e){
 if(e.key==="Enter"||e.key==="Go"||e.key==="Done"){
 e.preventDefault();
 calculate();
 }
 });
 
-/* SERVICE WORKER */
-setTimeout(()=>{
-if("serviceWorker" in navigator){
-navigator.serviceWorker.register("sw.js");
-}
-},500);
+/* PENSION SAVE */
+pensionToggle.onchange=()=>localStorage.setItem("pensionToggle",pensionToggle.value);
+if(localStorage.getItem("pensionToggle")) pensionToggle.value=localStorage.getItem("pensionToggle");
 
 /* INIT */
-loadHeader();
+loadHeaderInstant();
 loadAll();
 
-});
 </script>
 
 </body>
