@@ -1,11 +1,4 @@
-<!--
-© 2026 Connor Moizer. All rights reserved.
-
-This software is proprietary and confidential.
-Unauthorized copying, modification, distribution, or use is strictly prohibited.
-
-https://ConnorMoizer.com
--->
+<!-- 🔒 FINAL LOCKED VERSION + SHIFT CLEAR FIX -->
 
 <!DOCTYPE html>
 <html>
@@ -24,43 +17,20 @@ https://ConnorMoizer.com
 <style>
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
 
-body{
-font-family:-apple-system,system-ui;
-margin:0;
-background:#f5f5f5;
-transition:0.2s;
-}
-
-body.dark{
-background:#0b1220;
-color:#fff;
-}
+body{font-family:-apple-system,system-ui;margin:0;background:#f5f5f5;transition:0.2s;}
+body.dark{background:#0b1220;color:#fff;}
 
 .wrap{max-width:900px;margin:auto;padding:16px;display:flex;flex-direction:column;gap:16px;}
 
-.card{
-background:#fff;
-padding:18px;
-border-radius:20px;
-box-shadow:0 4px 12px rgba(0,0,0,0.05);
-}
-
+.card{background:#fff;padding:18px;border-radius:20px;box-shadow:0 4px 12px rgba(0,0,0,0.05);}
 body.dark .card{background:#111827;}
 
-input,button,select{
-width:100%;
-padding:18px;
-border-radius:18px;
-border:1px solid #ddd;
-font-size:16px;
-}
+input,button,select{width:100%;padding:18px;border-radius:18px;border:1px solid #ddd;font-size:16px;}
 
 body.dark input,
 body.dark button,
 body.dark select{
-background:#1f2937;
-color:#fff;
-border:1px solid #374151;
+background:#1f2937;color:#fff;border:1px solid #374151;
 }
 
 .btn-row{display:flex;gap:12px;}
@@ -69,39 +39,15 @@ body.dark .btn-row button{background:#374151;}
 
 #liveHeader{font-weight:bold;margin-bottom:10px;}
 
-.footer{
-text-align:center;
-font-size:13px;
-opacity:0.7;
-}
+.footer{text-align:center;font-size:13px;opacity:0.7;}
+.footer a{color:inherit;text-decoration:none;}
 
-.footer a{
-color:inherit;
-text-decoration:none;
-font-weight:500;
-}
-
-.footer a:hover{
-text-decoration:underline;
-}
-
-/* INSTALL POPUP */
 #installPrompt{
-position:fixed;
-bottom:0;
-left:0;
-right:0;
+position:fixed;bottom:0;left:0;right:0;
 background:rgba(255,255,255,0.95);
-padding:20px;
-display:none;
-border-radius:20px 20px 0 0;
-box-shadow:0 -10px 30px rgba(0,0,0,0.1);
+padding:20px;display:none;border-radius:20px 20px 0 0;
 }
-
-body.dark #installPrompt{
-background:#111827;
-color:#fff;
-}
+body.dark #installPrompt{background:#111827;color:#fff;}
 </style>
 </head>
 
@@ -151,49 +97,31 @@ Created by <a href="https://ConnorMoizer.com" target="_blank">Connor Moizer</a>
 
 </div>
 
-<!-- INSTALL POPUP -->
 <div id="installPrompt">
-
 <div style="text-align:center;font-weight:600;font-size:20px;margin-bottom:10px;">
 Install Cleaner Pay
 </div>
-
 <div style="text-align:center;font-size:16px;margin-bottom:20px;">
 Tap <b>Share (⬆️)</b> then <b>Add to Home Screen</b>
 </div>
-
 <div style="display:flex;gap:12px;">
 <button onclick="confirmInstall()">Install</button>
 <button onclick="closeInstall()">Cancel</button>
 </div>
-
 </div>
 
 <script>
 
-/*
-© 2026 Connor Moizer
-All rights reserved
-*/
+/* COPYRIGHT */
+console.log("© Connor Moizer");
 
 let periods=[],entries=[],holidays=[];
 
 /* HEADER */
 function loadHeaderInstant(){
 let now=new Date();
-
-let date=now.toLocaleDateString('en-GB',{
-day:'numeric',
-month:'short',
-year:'numeric'
-});
-
-let time=now.toLocaleTimeString('en-GB',{
-hour:'numeric',
-minute:'2-digit',
-second:'2-digit'
-});
-
+let date=now.toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'});
+let time=now.toLocaleTimeString('en-GB',{hour:'numeric',minute:'2-digit',second:'2-digit'});
 liveHeader.innerHTML=`${date} • ${time}`;
 }
 setInterval(loadHeaderInstant,1000);
@@ -211,30 +139,14 @@ window.addEventListener("beforeinstallprompt",(e)=>{
 e.preventDefault();
 deferredPrompt=e;
 });
-
 function showInstall(){
 let el=document.getElementById("installPrompt");
-
-if(el.style.display==="block"){
-el.style.display="none";
-return;
+el.style.display=el.style.display==="block"?"none":"block";
 }
-
-el.style.display="block";
-}
-
-function closeInstall(){
-document.getElementById("installPrompt").style.display="none";
-}
-
+function closeInstall(){document.getElementById("installPrompt").style.display="none";}
 function confirmInstall(){
 closeInstall();
-
-if(deferredPrompt){
-deferredPrompt.prompt();
-return;
-}
-
+if(deferredPrompt){deferredPrompt.prompt();return;}
 alert("Tap Share → Add to Home Screen");
 }
 
@@ -254,9 +166,22 @@ function formatDate(d){
 return new Date(d).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'});
 }
 
+/* PERIOD FIX */
+function getCurrentPeriod(){
+if(!periods || periods.length===0) return null;
+let today=new Date();
+for(let i=0;i<periods.length;i++){
+let from=new Date(periods[i].from);
+let nextFrom=periods[i+1]?new Date(periods[i+1].from):null;
+if(today>=from && (!nextFrom||today<nextFrom)){
+return periods[i];
+}
+}
+return null;
+}
+
 /* LOAD EXCEL */
 async function loadExcel(){
-
 let f=fileInput.files[0];
 if(!f)return alert("Upload file");
 
@@ -280,46 +205,47 @@ rows.slice(hi+1).forEach(r=>{
 let f=parseDate(r[fi]);
 let c=parseDate(r[ci]);
 let p=parseDate(r[pi]);
-
 if(f&&c&&p){
 periods.push({from:f,cutoff:c,payday:p});
 }
 });
 
-localStorage.setItem("periods",JSON.stringify(periods));
+localStorage.setItem("periods", JSON.stringify(periods));
 
 entries=[];
 render();
+excelBox.style.display="none";
 };
 
 r.readAsArrayBuffer(f);
 }
 
-/* LOAD */
+/* LOAD SAVED */
 function loadAll(){
 let p=localStorage.getItem("periods");
 if(p) periods=JSON.parse(p);
+entries=[];
 render();
 }
 
-/* PERIOD */
-function getCurrentPeriod(){
-let today=new Date();
-return periods.find(p=>today>=new Date(p.from))||null;
-}
-
-/* CALCULATE */
+/* CALCULATE (FIXED) */
 function calculate(){
 
-let s=Number(shifts.value);
-if(!s)return;
+let s = Number(shifts.value);
+if(!s || s <= 0){
+shifts.value="";
+return;
+}
 
-let total=s*Number(hours.value);
-let gross=round(total*rate.value + total*holiday.value);
+let total = s * Number(hours.value);
+let gross = round(total * rate.value + total * holiday.value);
 
-entries=[{gross,shifts:s}];
+entries = [{gross, shifts:s}];
 
 render();
+
+/* 🔥 CLEAR INPUT */
+shifts.value = "";
 
 /* CLOSE KEYBOARD */
 setTimeout(()=>{
@@ -334,7 +260,6 @@ setTimeout(()=>shifts.removeAttribute("readonly"), 50);
 function render(){
 
 let p=getCurrentPeriod();
-
 let gross=entries.reduce((s,e)=>s+(e.gross||0),0);
 
 /* PENSION */
@@ -343,12 +268,39 @@ if(localStorage.getItem("pensionToggle")!=="no"){
 pen=round(gross*0.04);
 }
 
-let net=round(gross-pen);
+/* NI */
+let weeks=2;
+let weeklyPay=round(gross/weeks);
+let NI_PT=242;
+let ni=0;
+if(weeklyPay>NI_PT){
+let weeklyNI=round((weeklyPay-NI_PT)*0.08);
+ni=round(weeklyNI*weeks);
+}
+
+/* TAX */
+let allowance=(12570/52)*weeks;
+let tax=0;
+if(gross>allowance){
+tax=round((gross-allowance)*0.2);
+}
+
+/* NET */
+let net=round(gross-pen-tax-ni);
 
 summaryBox.innerHTML=`
-${p?`Working Period: ${formatDate(p.from)} → ${formatDate(p.cutoff)}<br>Payday: ${formatDate(p.payday)}<br><br>`:""}
+${p && p.from && p.cutoff && p.payday ? `
+Working Period: ${formatDate(p.from)} → ${formatDate(p.cutoff)}<br>
+Payday: ${formatDate(p.payday)}<br><br>
+` : ""}
+
 Before deductions: £${gross.toFixed(2)}<br>
-Deducted: Pension £${pen.toFixed(2)}<br>
+
+Deducted:
+Pension £${pen.toFixed(2)} |
+Tax £${tax.toFixed(2)} |
+NI £${ni.toFixed(2)}<br>
+
 After deductions: £${net.toFixed(2)}
 `;
 }
@@ -359,7 +311,7 @@ entries=[];
 render();
 }
 
-/* ENTER FIX */
+/* ENTER */
 shifts.addEventListener("keydown",function(e){
 if(e.key==="Enter"||e.key==="Go"||e.key==="Done"){
 e.preventDefault();
