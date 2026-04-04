@@ -10,71 +10,13 @@
 
 <style>
 *{box-sizing:border-box;}
-
-body{
-font-family:system-ui;
-margin:0;
-background:#f5f5f5;
-}
-
-.wrap{
-max-width:900px;
-margin:auto;
-padding:16px;
-display:flex;
-flex-direction:column;
-gap:16px;
-min-height:100vh;
-}
-
-.card{
-background:#fff;
-padding:18px;
-border-radius:20px;
-box-shadow:0 4px 12px rgba(0,0,0,0.05);
-font-size:18px;
-line-height:1.6;
-}
-
-input,button{
-width:100%;
-padding:18px;
-border-radius:18px;
-border:1px solid #ddd;
-font-size:16px;
-}
-
-.btn-row{
-display:flex;
-gap:12px;
-}
-
-.btn-row button{
-flex:1;
-background:#f0f0f0;
-}
-
-/* 🌙 DARK MODE */
-body.dark{background:#0b1220;color:#fff;}
-body.dark .card{background:#111827;color:#fff;}
-body.dark input, body.dark button{
-background:#1f2937;
-color:#fff;
-border:1px solid #374151;
-}
-body.dark .btn-row button{background:#1f2937;}
-
-/* 🔥 HEADER FIX */
-#liveHeader{
-margin-bottom:10px;
-font-weight:bold;
-white-space:nowrap;
-overflow:hidden;
-text-overflow:ellipsis;
-font-variant-numeric:tabular-nums;
-}
-
-table{display:none;}h3{display:none;}
+body{font-family:system-ui;margin:0;background:#f5f5f5;}
+.wrap{max-width:900px;margin:auto;padding:16px;display:flex;flex-direction:column;gap:16px;}
+.card{background:#fff;padding:18px;border-radius:20px;box-shadow:0 4px 12px rgba(0,0,0,0.05);}
+input,button{width:100%;padding:18px;border-radius:18px;border:1px solid #ddd;}
+.btn-row{display:flex;gap:12px;}
+.btn-row button{flex:1;background:#f0f0f0;}
+#liveHeader{font-weight:bold;line-height:1.2;margin-bottom:10px;font-variant-numeric:tabular-nums;}
 </style>
 </head>
 
@@ -83,18 +25,13 @@ table{display:none;}h3{display:none;}
 <div class="wrap">
 
 <div class="card">
-
-<!-- 🔥 ALWAYS VISIBLE HEADER -->
-<div id="liveHeader">User • -- -- ---- • --:--</div>
-
+<div id="liveHeader">User<br>-- -- ---- • --:--:--</div>
 <div id="summaryBox">Loading...</div>
-
 </div>
 
 <div class="btn-row">
 <button onclick="toggleExcel()">📄</button>
 <button onclick="toggleSettings()">⚙️</button>
-<button onclick="toggleDarkMode()">🌙</button>
 </div>
 
 <div id="excelBox" class="card" style="display:none;">
@@ -103,11 +40,10 @@ table{display:none;}h3{display:none;}
 </div>
 
 <div id="settingsBox" class="card" style="display:none;">
-<input id="userName" type="text" placeholder="Your name">
+<input id="userName" placeholder="Your name">
 <input id="rate" type="number" value="12.21">
-<input id="holiday" type="number" value="1.47">
+<input id="holiday" type="number" value="1.47375">
 <input id="hours" type="number" value="7">
-<input id="pensionEmployee" type="number" value="5">
 </div>
 
 <input id="shifts" placeholder="Shifts">
@@ -123,138 +59,31 @@ table{display:none;}h3{display:none;}
 
 let periods=[],entries=[],holidays=[];
 
-/* SETTINGS */
-function saveSettings(){
-localStorage.setItem("userName", userName.value);
-}
-function loadSettings(){
-let name=localStorage.getItem("userName");
-if(name) userName.value=name;
-}
-
-/* 🌙 DARK MODE */
-function toggleDarkMode(){
-document.body.classList.toggle("dark");
-localStorage.setItem("darkMode",document.body.classList.contains("dark"));
-}
-(function(){
-let dark=localStorage.getItem("darkMode");
-if(dark==="true") document.body.classList.add("dark");
-})();
-
-/* 🔥 INSTANT HEADER LOAD */
+/* HEADER */
 function loadHeaderInstant(){
-
-let name = localStorage.getItem("userName") || "User";
-
-let now = new Date();
-
-let date = now.toLocaleDateString(undefined,{
-day:'numeric',month:'short',year:'numeric'
-});
-
-let time = now.toLocaleTimeString(undefined,{
-hour:'numeric',minute:'2-digit'
-});
-
-liveHeader.innerText = `${name} • ${date} • ${time}`;
-}
-
-/* 🔥 LIVE CLOCK */
-function startClock(){
-
-function updateClock(){
-
+let name=localStorage.getItem("userName")||"User";
 let now=new Date();
 
-let date=now.toLocaleDateString(undefined,{
-day:'numeric',month:'short',year:'numeric'
-});
+let date=now.toLocaleDateString(undefined,{day:'numeric',month:'short',year:'numeric'});
+let time=now.toLocaleTimeString(undefined,{hour:'numeric',minute:'2-digit',second:'2-digit'});
 
-let time=now.toLocaleTimeString(undefined,{
-hour:'numeric',minute:'2-digit'
-});
-
-let name=userName.value||"User";
-
-liveHeader.innerText=`${name} • ${date} • ${time}`;
+liveHeader.innerHTML=`${name}<br>${date} • ${time}`;
 }
+setInterval(loadHeaderInstant,1000);
 
-/* run immediately */
-updateClock();
-
-/* update every minute */
-setInterval(updateClock,60000);
-}
-
-/* SAVE */
-function saveAll(){
-localStorage.setItem("periods",JSON.stringify(periods));
-}
-
-/* LOAD */
-function loadAll(){
-let p=localStorage.getItem("periods");
-
-entries=[];
-localStorage.removeItem("entries");
-
-if(p) periods=JSON.parse(p);
-
-checkNewPeriod();
-render();
-}
-
-/* PERIOD */
-function getCurrentPeriod(){
-if(!periods.length) return null;
-
-let today=new Date();
-
-for(let i=0;i<periods.length;i++){
-let from=new Date(periods[i].from);
-let nextFrom=periods[i+1]?new Date(periods[i+1].from):null;
-
-if(today>=from && (!nextFrom||today<nextFrom)){
-return periods[i];
-}
-}
-return periods[periods.length-1];
-}
-
-/* RESET */
-function checkNewPeriod(){
-if(!periods.length)return;
-
-let today=new Date();
-
-let index=periods.findIndex((p,i)=>{
-let from=new Date(p.from);
-let nextFrom=periods[i+1]?new Date(periods[i+1].from):null;
-return today>=from && (!nextFrom||today<nextFrom);
-});
-
-if(index===-1) index=periods.length-1;
-
-let lastIndex=localStorage.getItem("periodIndex");
-
-if(lastIndex!==null && Number(lastIndex)!==index){
-entries=[];
-localStorage.removeItem("entries");
-}
-
-localStorage.setItem("periodIndex",index);
-}
-
-/* TOGGLE */
+/* TOGGLES */
 function toggleExcel(){excelBox.style.display=excelBox.style.display==="none"?"block":"none";}
 function toggleSettings(){settingsBox.style.display=settingsBox.style.display==="none"?"block":"none";}
+
+/* ROUND */
+function round(v){return Math.round(v*100)/100;}
 
 /* DATE */
 function parseDate(v){
 if(typeof v==="number") return new Date((v-25569)*86400000);
 return new Date(v);
 }
+
 function formatDate(d){
 return new Date(d).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'});
 }
@@ -280,6 +109,7 @@ return d;
 
 /* LOAD EXCEL */
 async function loadExcel(){
+
 let f=fileInput.files[0];
 if(!f)return alert("Upload file");
 
@@ -288,6 +118,7 @@ await loadBankHolidays();
 let r=new FileReader();
 
 r.onload=function(e){
+
 let wb=XLSX.read(e.target.result,{type:'array'});
 let rows=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{header:1});
 
@@ -304,6 +135,7 @@ rows.slice(hi+1).forEach(r=>{
 let f=parseDate(r[fi]);
 let c=parseDate(r[ci]);
 let p=parseDate(r[pi]);
+
 if(f&&c&&p){
 periods.push({from:f,cutoff:c,payday:adjustPayday(p)});
 }
@@ -311,52 +143,61 @@ periods.push({from:f,cutoff:c,payday:adjustPayday(p)});
 
 periods.sort((a,b)=>a.from-b.from);
 
-saveAll();
-excelBox.style.display="none";
+localStorage.setItem("periods",JSON.stringify(periods));
+
+/* 🔥 RESET PAY AFTER NEW EXCEL */
+entries = [];
+localStorage.removeItem("entries");
+shifts.value = "";
+
+/* UPDATE UI */
 render();
+
+/* CLOSE PANEL */
+excelBox.style.display="none";
+
 };
 
 r.readAsArrayBuffer(f);
 }
 
-/* ADD SHIFT */
+/* CURRENT PERIOD */
+function getCurrentPeriod(){
+if(!periods.length) return null;
+
+let today=new Date();
+
+for(let i=0;i<periods.length;i++){
+let from=new Date(periods[i].from);
+let nextFrom=periods[i+1]?new Date(periods[i+1].from):null;
+
+if(today>=from && (!nextFrom||today<nextFrom)){
+return periods[i];
+}
+}
+
+return periods[periods.length-1];
+}
+
+/* CALCULATE */
 function calculate(){
-if(!periods.length)return alert("Load Excel");
 
 let s=Number(shifts.value);
 if(!s)return;
 
-let pay=s*Number(hours.value)*(Number(rate.value)+Number(holiday.value));
+let h=Number(hours.value);
+let totalHours=s*h;
 
-entries=[{pay,shifts:s}];
+/* LINE ROUNDING */
+let basic=round(totalHours*Number(rate.value));
+let holidayPay=round(totalHours*Number(holiday.value));
+
+let gross=round(basic+holidayPay);
+
+entries=[{gross,shifts:s}];
 
 render();
 shifts.value="";
-}
-
-/* TAX */
-function calculateTax(total,period){
-if(!period)return 0;
-
-let weeks=Math.ceil((new Date(period.cutoff)-new Date(period.from))/(1000*60*60*24*7));
-let allowance=(12570/52)*weeks;
-
-let taxable=total-allowance;
-if(taxable<=0)return 0;
-
-return taxable*0.20;
-}
-
-/* NI */
-function calculateNI(total,period){
-if(!period)return 0;
-
-let weeks=Math.ceil((new Date(period.cutoff)-new Date(period.from))/(1000*60*60*24*7));
-let threshold=242*weeks;
-
-if(total<=threshold)return 0;
-
-return (total-threshold)*0.08;
 }
 
 /* RENDER */
@@ -364,22 +205,50 @@ function render(){
 
 let p=getCurrentPeriod();
 
-let total=entries.reduce((s,e)=>s+(Number(e.pay)||0),0);
-let totalShifts=entries.reduce((s,e)=>s+(Number(e.shifts)||0),0);
+let gross=entries.reduce((s,e)=>s+(e.gross||0),0);
+let shiftsCount=entries.reduce((s,e)=>s+(e.shifts||0),0);
 
-let pen=total*(Number(pensionEmployee.value)/100);
-let tax=calculateTax(total,p);
-let ni=calculateNI(total,p);
+/* ASM PENSION */
+let pen=round(gross*0.04);
 
-let net=total-pen-tax-ni;
+/* NI */
+let weeks=2;
+let weeklyPay=round(gross/weeks);
+let NI_PT=242;
+let ni=0;
+
+if(weeklyPay>NI_PT){
+let weeklyNI=round((weeklyPay-NI_PT)*0.08);
+ni=round(weeklyNI*weeks);
+}
+
+/* TAX */
+let allowance=(12570/52)*weeks;
+let tax=0;
+
+if(gross>allowance){
+tax=round((gross-allowance)*0.2);
+}
+
+/* NET */
+let net=round(gross-pen-tax-ni);
 
 summaryBox.innerHTML=`
-${p?`Working Period: ${formatDate(p.from)} → ${formatDate(p.cutoff)}<br>
-Payday: ${formatDate(p.payday)}<br><br>`:""}
 
-Before deductions: £${total.toFixed(2)}<br>
-Deducted: Pension £${pen.toFixed(2)} | Tax £${tax.toFixed(2)} | NI £${ni.toFixed(2)}<br>
-After deductions: £${net.toFixed(2)} ${totalShifts?`(${totalShifts} shifts)`:""}
+${p ? `
+Working Period: ${formatDate(p.from)} → ${formatDate(p.cutoff)}<br>
+Payday: ${formatDate(p.payday)}<br><br>
+` : ""}
+
+Before deductions: £${gross.toFixed(2)}<br>
+
+Deducted:
+Pension £${pen.toFixed(2)} |
+Tax £${tax.toFixed(2)} |
+NI £${ni.toFixed(2)}<br>
+
+After deductions: £${net.toFixed(2)} (${shiftsCount||0} shifts)
+
 `;
 }
 
@@ -387,7 +256,6 @@ After deductions: £${net.toFixed(2)} ${totalShifts?`(${totalShifts} shifts)`:""
 function resetAll(){
 entries=[];
 render();
-shifts.value="";
 }
 
 /* ENTER */
@@ -398,12 +266,9 @@ calculate();
 }
 });
 
-/* INIT ORDER (IMPORTANT) */
-loadHeaderInstant();   // 🔥 instant display
-loadAll();
-loadSettings();
-startClock();
-userName.addEventListener("input",saveSettings);
+/* INIT */
+loadHeaderInstant();
+render();
 
 </script>
 
