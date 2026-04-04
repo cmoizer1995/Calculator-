@@ -54,8 +54,27 @@ flex:1;
 background:#f0f0f0;
 }
 
-table{display:none;}
-h3{display:none;}
+/* 🌙 DARK MODE */
+body.dark{background:#0b1220;color:#fff;}
+body.dark .card{background:#111827;color:#fff;}
+body.dark input, body.dark button{
+background:#1f2937;
+color:#fff;
+border:1px solid #374151;
+}
+body.dark .btn-row button{background:#1f2937;}
+
+/* 🔥 HEADER FIX */
+#liveHeader{
+margin-bottom:10px;
+font-weight:bold;
+white-space:nowrap;
+overflow:hidden;
+text-overflow:ellipsis;
+font-variant-numeric:tabular-nums;
+}
+
+table{display:none;}h3{display:none;}
 </style>
 </head>
 
@@ -63,13 +82,19 @@ h3{display:none;}
 
 <div class="wrap">
 
-<div class="card" id="summaryBox">
-Loading...
+<div class="card">
+
+<!-- 🔥 ALWAYS VISIBLE HEADER -->
+<div id="liveHeader">User • -- -- ---- • --:--</div>
+
+<div id="summaryBox">Loading...</div>
+
 </div>
 
 <div class="btn-row">
 <button onclick="toggleExcel()">📄</button>
 <button onclick="toggleSettings()">⚙️</button>
+<button onclick="toggleDarkMode()">🌙</button>
 </div>
 
 <div id="excelBox" class="card" style="display:none;">
@@ -78,6 +103,7 @@ Loading...
 </div>
 
 <div id="settingsBox" class="card" style="display:none;">
+<input id="userName" type="text" placeholder="Your name">
 <input id="rate" type="number" value="12.21">
 <input id="holiday" type="number" value="1.47">
 <input id="hours" type="number" value="7">
@@ -97,6 +123,70 @@ Loading...
 
 let periods=[],entries=[],holidays=[];
 
+/* SETTINGS */
+function saveSettings(){
+localStorage.setItem("userName", userName.value);
+}
+function loadSettings(){
+let name=localStorage.getItem("userName");
+if(name) userName.value=name;
+}
+
+/* 🌙 DARK MODE */
+function toggleDarkMode(){
+document.body.classList.toggle("dark");
+localStorage.setItem("darkMode",document.body.classList.contains("dark"));
+}
+(function(){
+let dark=localStorage.getItem("darkMode");
+if(dark==="true") document.body.classList.add("dark");
+})();
+
+/* 🔥 INSTANT HEADER LOAD */
+function loadHeaderInstant(){
+
+let name = localStorage.getItem("userName") || "User";
+
+let now = new Date();
+
+let date = now.toLocaleDateString(undefined,{
+day:'numeric',month:'short',year:'numeric'
+});
+
+let time = now.toLocaleTimeString(undefined,{
+hour:'numeric',minute:'2-digit'
+});
+
+liveHeader.innerText = `${name} • ${date} • ${time}`;
+}
+
+/* 🔥 LIVE CLOCK */
+function startClock(){
+
+function updateClock(){
+
+let now=new Date();
+
+let date=now.toLocaleDateString(undefined,{
+day:'numeric',month:'short',year:'numeric'
+});
+
+let time=now.toLocaleTimeString(undefined,{
+hour:'numeric',minute:'2-digit'
+});
+
+let name=userName.value||"User";
+
+liveHeader.innerText=`${name} • ${date} • ${time}`;
+}
+
+/* run immediately */
+updateClock();
+
+/* update every minute */
+setInterval(updateClock,60000);
+}
+
 /* SAVE */
 function saveAll(){
 localStorage.setItem("periods",JSON.stringify(periods));
@@ -104,78 +194,61 @@ localStorage.setItem("periods",JSON.stringify(periods));
 
 /* LOAD */
 function loadAll(){
+let p=localStorage.getItem("periods");
 
-let p = localStorage.getItem("periods");
-
-/* 🔥 ALWAYS RESET PAY */
-entries = [];
+entries=[];
 localStorage.removeItem("entries");
 
-/* keep Excel */
-if(p) periods = JSON.parse(p);
+if(p) periods=JSON.parse(p);
 
 checkNewPeriod();
 render();
 }
 
-/* CURRENT PERIOD (FROM BASED) */
+/* PERIOD */
 function getCurrentPeriod(){
-
 if(!periods.length) return null;
 
-let today = new Date();
+let today=new Date();
 
-for(let i = 0; i < periods.length; i++){
+for(let i=0;i<periods.length;i++){
+let from=new Date(periods[i].from);
+let nextFrom=periods[i+1]?new Date(periods[i+1].from):null;
 
-let from = new Date(periods[i].from);
-let nextFrom = periods[i+1] ? new Date(periods[i+1].from) : null;
-
-if(today >= from && (!nextFrom || today < nextFrom)){
+if(today>=from && (!nextFrom||today<nextFrom)){
 return periods[i];
 }
-
+}
+return periods[periods.length-1];
 }
 
-return periods[periods.length - 1];
-}
-
-/* RESET WHEN PERIOD CHANGES */
+/* RESET */
 function checkNewPeriod(){
+if(!periods.length)return;
 
-if(!periods.length) return;
+let today=new Date();
 
-let today = new Date();
-
-let index = periods.findIndex((p, i) => {
-
-let from = new Date(p.from);
-let nextFrom = periods[i+1] ? new Date(periods[i+1].from) : null;
-
-return today >= from && (!nextFrom || today < nextFrom);
-
+let index=periods.findIndex((p,i)=>{
+let from=new Date(p.from);
+let nextFrom=periods[i+1]?new Date(periods[i+1].from):null;
+return today>=from && (!nextFrom||today<nextFrom);
 });
 
-if(index === -1) index = periods.length - 1;
+if(index===-1) index=periods.length-1;
 
-let lastIndex = localStorage.getItem("periodIndex");
+let lastIndex=localStorage.getItem("periodIndex");
 
-if(lastIndex !== null && Number(lastIndex) !== index){
-
-entries = [];
+if(lastIndex!==null && Number(lastIndex)!==index){
+entries=[];
 localStorage.removeItem("entries");
-
 }
 
-localStorage.setItem("periodIndex", index);
+localStorage.setItem("periodIndex",index);
 }
 
 /* TOGGLE */
-function toggleExcel(){
-excelBox.style.display=excelBox.style.display==="none"?"block":"none";
-}
-function toggleSettings(){
-settingsBox.style.display=settingsBox.style.display==="none"?"block":"none";
-}
+function toggleExcel(){excelBox.style.display=excelBox.style.display==="none"?"block":"none";}
+function toggleSettings(){settingsBox.style.display=settingsBox.style.display==="none"?"block":"none";}
 
 /* DATE */
 function parseDate(v){
@@ -207,7 +280,6 @@ return d;
 
 /* LOAD EXCEL */
 async function loadExcel(){
-
 let f=fileInput.files[0];
 if(!f)return alert("Upload file");
 
@@ -216,7 +288,6 @@ await loadBankHolidays();
 let r=new FileReader();
 
 r.onload=function(e){
-
 let wb=XLSX.read(e.target.result,{type:'array'});
 let rows=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{header:1});
 
@@ -242,16 +313,14 @@ periods.sort((a,b)=>a.from-b.from);
 
 saveAll();
 excelBox.style.display="none";
-
 render();
 };
 
 r.readAsArrayBuffer(f);
 }
 
-/* CALCULATE */
+/* ADD SHIFT */
 function calculate(){
-
 if(!periods.length)return alert("Load Excel");
 
 let s=Number(shifts.value);
@@ -259,11 +328,35 @@ if(!s)return;
 
 let pay=s*Number(hours.value)*(Number(rate.value)+Number(holiday.value));
 
-entries = [{pay}];
+entries=[{pay,shifts:s}];
 
 render();
-
 shifts.value="";
+}
+
+/* TAX */
+function calculateTax(total,period){
+if(!period)return 0;
+
+let weeks=Math.ceil((new Date(period.cutoff)-new Date(period.from))/(1000*60*60*24*7));
+let allowance=(12570/52)*weeks;
+
+let taxable=total-allowance;
+if(taxable<=0)return 0;
+
+return taxable*0.20;
+}
+
+/* NI */
+function calculateNI(total,period){
+if(!period)return 0;
+
+let weeks=Math.ceil((new Date(period.cutoff)-new Date(period.from))/(1000*60*60*24*7));
+let threshold=242*weeks;
+
+if(total<=threshold)return 0;
+
+return (total-threshold)*0.08;
 }
 
 /* RENDER */
@@ -271,17 +364,22 @@ function render(){
 
 let p=getCurrentPeriod();
 
-let total=entries.reduce((s,e)=>s+e.pay,0);
+let total=entries.reduce((s,e)=>s+(Number(e.pay)||0),0);
+let totalShifts=entries.reduce((s,e)=>s+(Number(e.shifts)||0),0);
+
 let pen=total*(Number(pensionEmployee.value)/100);
-let net=total-pen;
+let tax=calculateTax(total,p);
+let ni=calculateNI(total,p);
+
+let net=total-pen-tax-ni;
 
 summaryBox.innerHTML=`
-${p ? `Working Period: ${formatDate(p.from)} → ${formatDate(p.cutoff)}<br>
-Payday: ${formatDate(p.payday)}<br><br>` : ""}
+${p?`Working Period: ${formatDate(p.from)} → ${formatDate(p.cutoff)}<br>
+Payday: ${formatDate(p.payday)}<br><br>`:""}
 
 Before deductions: £${total.toFixed(2)}<br>
-Deducted: Pension £${pen.toFixed(2)} | Tax £0.00 | NI £0.00<br>
-After deductions: £${net.toFixed(2)}
+Deducted: Pension £${pen.toFixed(2)} | Tax £${tax.toFixed(2)} | NI £${ni.toFixed(2)}<br>
+After deductions: £${net.toFixed(2)} ${totalShifts?`(${totalShifts} shifts)`:""}
 `;
 }
 
@@ -292,7 +390,7 @@ render();
 shifts.value="";
 }
 
-/* ENTER KEY */
+/* ENTER */
 shifts.addEventListener("keydown",function(e){
 if(e.key==="Enter"){
 e.preventDefault();
@@ -300,8 +398,12 @@ calculate();
 }
 });
 
-/* INIT */
+/* INIT ORDER (IMPORTANT) */
+loadHeaderInstant();   // 🔥 instant display
 loadAll();
+loadSettings();
+startClock();
+userName.addEventListener("input",saveSettings);
 
 </script>
 
