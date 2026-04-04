@@ -145,12 +145,10 @@ periods.sort((a,b)=>a.from-b.from);
 
 localStorage.setItem("periods",JSON.stringify(periods));
 
-/* 🔥 RESET PAY AFTER NEW EXCEL */
-entries = [];
-localStorage.removeItem("entries");
-shifts.value = "";
+/* RESET PAY ONLY */
+entries=[];
+shifts.value="";
 
-/* UPDATE UI */
 render();
 
 /* CLOSE PANEL */
@@ -159,6 +157,22 @@ excelBox.style.display="none";
 };
 
 r.readAsArrayBuffer(f);
+}
+
+/* LOAD SAVED EXCEL */
+function loadAll(){
+
+let p=localStorage.getItem("periods");
+
+if(p){
+periods=JSON.parse(p);
+}
+
+/* reset pay only */
+entries=[];
+shifts.value="";
+
+render();
 }
 
 /* CURRENT PERIOD */
@@ -183,12 +197,16 @@ return periods[periods.length-1];
 function calculate(){
 
 let s=Number(shifts.value);
-if(!s)return;
+
+/* ZERO FIX */
+if(!s||s<=0){
+shifts.value="";
+return;
+}
 
 let h=Number(hours.value);
 let totalHours=s*h;
 
-/* LINE ROUNDING */
 let basic=round(totalHours*Number(rate.value));
 let holidayPay=round(totalHours*Number(holiday.value));
 
@@ -268,7 +286,7 @@ calculate();
 
 /* INIT */
 loadHeaderInstant();
-render();
+loadAll();
 
 </script>
 
